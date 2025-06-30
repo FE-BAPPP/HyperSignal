@@ -54,35 +54,6 @@ app.get("/api/candles/debug", async (req, res) => {
   }
 });
 
-// Endpoint để xem tổng quan dữ liệu
-app.get("/api/status", async (req, res) => {
-  try {
-    const candleCount = await Candle.countDocuments();
-    const tradeCount = await Ticker.countDocuments();
-    
-    const latestCandle = await Candle.findOne().sort({ startTime: -1 });
-    const latestTrade = await Ticker.findOne().sort({ time: -1 });
-    
-    const candlesBySymbol = await Candle.aggregate([
-      { $group: { _id: "$symbol", count: { $sum: 1 }, latest: { $max: "$startTime" } } }
-    ]);
-    
-    res.json({
-      candles: {
-        total: candleCount,
-        bySymbol: candlesBySymbol,
-        latest: latestCandle
-      },
-      trades: {
-        total: tradeCount,
-        latest: latestTrade
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 app.listen(process.env.PORT, () =>
   console.log(`🚀 Backend running on port ${process.env.PORT}`)
 );
