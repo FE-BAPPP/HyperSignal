@@ -21,22 +21,23 @@ ChartJS.register(
 );
 
 function FundingChart({ data }) {
+  console.log("📊 FundingChart received data:", data);
+
   if (!data || data.length === 0) {
     return (
       <div className="mt-6 p-4 border rounded bg-gray-50">
         <h3 className="font-semibold text-gray-600">💰 Funding Rate</h3>
         <p className="text-sm text-gray-500 mt-2">Không có dữ liệu funding rate</p>
+        <p className="text-xs text-gray-400">Data length: {data ? data.length : 'null'}</p>
       </div>
     );
   }
 
-  const sortedData = data.sort((a, b) => new Date(a.nextFundingTime) - new Date(b.nextFundingTime));
+  const sortedData = data.sort((a, b) => new Date(a.time || a.createdAt) - new Date(b.time || b.createdAt));
 
   const chartData = {
     labels: sortedData.map(item => 
-      new Date(item.nextFundingTime).toLocaleDateString('vi-VN', {
-        month: 'short',
-        day: 'numeric',
+      new Date(item.time || item.createdAt).toLocaleTimeString('vi-VN', {
         hour: '2-digit',
         minute: '2-digit'
       })
@@ -95,7 +96,7 @@ function FundingChart({ data }) {
               Current: {(currentFunding.fundingRate * 100).toFixed(4)}%
             </span>
             <span className="text-gray-600">
-              Next: {new Date(currentFunding.nextFundingTime).toLocaleTimeString()}
+              Updated: {new Date(currentFunding.time || currentFunding.createdAt).toLocaleTimeString()}
             </span>
           </div>
         )}

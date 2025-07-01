@@ -25,14 +25,30 @@ function App() {
         setLastUpdate(new Date());
       })
       .catch(console.error);
+      
     axios.get(`http://localhost:4000/api/trades?symbol=${symbol}`)
       .then(res => setTrades(res.data))
       .catch(console.error);
+      
     axios.get(`http://localhost:4000/api/funding?symbol=${symbol}`)
-      .then(res => setFunding(res.data))
+      .then(res => {
+        console.log(`💰 Fetched ${res.data.length} funding records for ${symbol}:`, res.data);
+        setFunding(res.data);
+      })
       .catch(console.error);
+      
     axios.get(`http://localhost:4000/api/oi?symbol=${symbol}`)
-      .then(res => setOI(res.data))
+      .then(res => {
+        console.log(`📈 Fetched ${res.data.length} OI records for ${symbol}:`, res.data);
+        
+        // Debug: Log cấu trúc của từng record
+        if (res.data.length > 0) {
+          console.log("🔍 First OI record structure:", res.data[0]);
+          console.log("🔍 OI record keys:", Object.keys(res.data[0]));
+        }
+        
+        setOI(res.data);
+      })
       .catch(console.error);
   };
 

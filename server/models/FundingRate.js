@@ -1,10 +1,15 @@
 const mongoose = require("mongoose");
 
-const schema = new mongoose.Schema({
+const fundingRateSchema = new mongoose.Schema({
   symbol: String,
-  rate: Number,
+  fundingRate: Number,
+  nextFundingTime: Date,  // Thêm field này
+  premium: Number,
   time: { type: Date, default: Date.now },
-  createdAt: { type: Date, default: Date.now, expires: 60 * 60 * 24 * 3 }
+  createdAt: { type: Date, default: Date.now, expires: 60 * 60 * 24 * 7 } // TTL 7 ngày
 });
 
-module.exports = mongoose.model("FundingRate", schema);
+// Tạo compound index để tránh duplicate
+fundingRateSchema.index({ symbol: 1, nextFundingTime: 1 }, { unique: true });
+
+module.exports = mongoose.model("FundingRate", fundingRateSchema);
