@@ -4,8 +4,16 @@ const Ticker = require("./models/Ticker");
 const Candle = require("./models/Candle");
 const Funding = require("./models/FundingRate");
 const OI = require("./models/OpenInterest");
+const CandleAggregator = require("./services/CandleAggregator");
 
 const SYMBOLS = ["ETH", "BTC", "SOL"];
+const aggregator = new CandleAggregator();
+
+// Buffer để lưu trades cho mỗi symbol
+const tradesBuffer = {};
+SYMBOLS.forEach(symbol => {
+  tradesBuffer[symbol] = [];
+});
 
 function startWebSocket() {
   const ws = new WebSocket("wss://api.hyperliquid.xyz/ws");
@@ -13,51 +21,76 @@ function startWebSocket() {
   ws.on("open", () => {
     console.log("✅ WebSocket connected");
     
-    // CHỈ subscribe trades và candles - bỏ tất cả funding/oi subscriptions
     SYMBOLS.forEach((coin) => {
-      ws.send(
-        JSON.stringify({
-          method: "subscribe",
-          subscription: {
-            type: "trades",
-            coin: coin,
-          },
-        })
-      );
+      console.log(`📡 Subscribing to ${coin}...`);
+      ws.send(JSON.stringify({
+        method: "subscribe",
+        subscription: { type: "trades", coin: coin }
+      }));
       
       ws.send(JSON.stringify({
         method: "subscribe",
-        subscription: {
-            type: "candle",
-            coin: coin,
-            interval: "1m"
-        }
+        subscription: { type: "candle", coin: coin, interval: "1m" }
       }));
     });
     
+    // Auto-aggregate mỗi 2 phút
+    setInterval(() => {
+      console.log('🔄 Auto-aggregation starting...');
+      aggregator.runAggregation(SYMBOLS);
+    }, 2 * 60 * 1000);
+    
+    // Chạy aggregation ngay sau 30 giây
+    setTimeout(() => {
+      console.log('🔄 Initial aggregation...');
+      aggregator.runAggregation(SYMBOLS);
+    }, 30000);
+
+    // Log subscriptions sau 5 giây
+    setTimeout(() => {
+      console.log("📊 Active subscriptions for symbols:", SYMBOLS);
+    }, 5000);
+    
+    // Chạy aggregation mỗi 5 phút
+    setInterval(() => {
+      aggregator.runAggregation(SYMBOLS);
+    }, 5 * 60 * 1000);
+    
     // Fetch funding rates và OI từ REST API
-    fetchFundingAndOI(); // Fetch ngay lập tức
-    setInterval(fetchFundingAndOI, 60000); // Mỗi 60 giây
+    fetchFundingAndOI();
+    setInterval(fetchFundingAndOI, 60000);
   });
 
   ws.on("message", async (message) => {
     try {
       const m = JSON.parse(message);
       
+      // Log tất cả message types
+      if (m.channel) {
+        console.log(`📨 Received ${m.channel} message for ${m.data?.coin || m.data?.s || 'unknown'}`);
+      }
+      
       if (m.channel === "trades" && Array.isArray(m.data)) {
+        console.log(`💰 Processing ${m.data.length} trades`);
+        
         for (const trade of m.data) {
           if (trade && trade.px && trade.time && trade.coin) {
+            console.log(`📈 [${trade.coin}] Trade: ${trade.px} at ${new Date(trade.time).toLocaleTimeString()}`);
+            
+            // Lưu trade vào database
             await Ticker.create({
               symbol: trade.coin,
               price: parseFloat(trade.px),
               time: new Date(trade.time),
             });
-            console.log(`[${trade.coin}] ${trade.px} at ${new Date(trade.time).toLocaleTimeString()}`);
+          } else {
+            console.warn("⚠️ Invalid trade data:", trade);
           }
         }
       } 
       else if (m.channel === "candle" && typeof m.data === "object" && m.data !== null) {
         const c = m.data;
+        console.log(`🕯️ Processing candle for ${c.s}: ${c.o} → ${c.c}`);
         
         try {
           if (!c.s) {
@@ -65,18 +98,13 @@ function startWebSocket() {
             return;
           }
           
-          let startTime;
-          if (c.t) {
-            startTime = new Date(typeof c.t === "number" ? c.t : parseInt(c.t));
-          } else {
-            console.warn("⚠️ No valid timestamp in candle data");
+          if (!SYMBOLS.includes(c.s)) {
+            console.warn(`⚠️ Received candle for non-tracked symbol: ${c.s}`);
             return;
           }
           
-          if (isNaN(startTime.getTime())) {
-            console.warn("⚠️ Invalid timestamp in candle data");
-            return;
-          }
+          let startTime = new Date(typeof c.t === "number" ? c.t : parseInt(c.t));
+          if (isNaN(startTime.getTime())) return;
           
           const candleData = {
             symbol: c.s,
@@ -85,12 +113,13 @@ function startWebSocket() {
             high: parseFloat(c.h || 0),
             low: parseFloat(c.l || 0),
             close: parseFloat(c.c || 0),
+            volume: parseFloat(c.v || 0),
             startTime: startTime,
+            endTime: new Date(startTime.getTime() + 60 * 1000) // 1m interval
           };
           
           if (candleData.open <= 0 || candleData.high <= 0 || 
               candleData.low <= 0 || candleData.close <= 0) {
-            console.warn("⚠️ Invalid price values in candle data");
             return;
           }
           
@@ -104,13 +133,12 @@ function startWebSocket() {
             { upsert: true, new: true }
           );
           
-          console.log(`✅ [CANDLE ${c.s}] ${c.o} → ${c.c}`);
+          console.log(`✅ [CANDLE ${c.s}] ${c.i} ${c.o} → ${c.c}`);
           
         } catch (err) {
           console.error("❌ Error saving candle:", err.message);
         }
       }
-      // Bỏ tất cả handlers khác vì không cần thiết
 
     } catch (err) {
       console.error("❌ WebSocket parse error:", err.message);
@@ -127,7 +155,6 @@ async function fetchFundingAndOI() {
   try {
     console.log("💰📈 Fetching funding rates and open interest...");
     
-    // Sử dụng API metaAndAssetCtxs để lấy cả funding và OI
     const response = await axios.post('https://api.hyperliquid.xyz/info', {
       type: 'metaAndAssetCtxs'
     });
@@ -142,19 +169,23 @@ async function fetchFundingAndOI() {
         const ctx = assetCtxs[i];
         
         if (SYMBOLS.includes(asset.name) && ctx) {
-          // Save Funding Rate
+          // Save Funding Rate - kiểm tra duplicate bằng thời gian
           try {
+            const now = new Date();
+            const roundedTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), Math.floor(now.getMinutes()/5)*5, 0, 0); // Round to 5 minutes
+            
             const fundingData = {
               symbol: asset.name,
               fundingRate: parseFloat(ctx.funding || 0),
-              nextFundingTime: new Date(Date.now() + 8 * 60 * 60 * 1000), // 8h sau
               premium: parseFloat(ctx.premium || 0),
+              time: roundedTime,
             };
             
+            // Sử dụng upsert để tránh duplicate
             await Funding.findOneAndUpdate(
               { 
                 symbol: fundingData.symbol,
-                nextFundingTime: fundingData.nextFundingTime
+                time: fundingData.time
               },
               fundingData,
               { upsert: true, new: true }
@@ -162,21 +193,22 @@ async function fetchFundingAndOI() {
             
             console.log(`💰 [${asset.name}] Funding: ${(fundingData.fundingRate * 100).toFixed(4)}%`);
           } catch (err) {
-            console.error(`❌ Error saving funding for ${asset.name}:`, err.message);
+            if (err.code === 11000) {
+              console.log(`⚠️ [${asset.name}] Funding already exists for this time period`);
+            } else {
+              console.error(`❌ Error saving funding for ${asset.name}:`, err.message);
+            }
           }
           
           // Save Open Interest
           try {
             const oiData = {
               symbol: asset.name,
-              oi: parseFloat(ctx.openInterest || 0), // Sử dụng field 'oi' thay vì 'openInterest'
+              oi: parseFloat(ctx.openInterest || 0),
               time: new Date(),
             };
             
-            console.log(`📈 Saving OI data:`, oiData);
-            
             await OI.create(oiData);
-            
             console.log(`📈 [${asset.name}] OI: ${oiData.oi.toLocaleString()}`);
           } catch (err) {
             console.error(`❌ Error saving OI for ${asset.name}:`, err.message);
@@ -186,10 +218,6 @@ async function fetchFundingAndOI() {
     }
   } catch (err) {
     console.error("❌ Error fetching funding and OI:", err.message);
-    if (err.response) {
-      console.error("❌ Response status:", err.response.status);
-      console.error("❌ Response data:", err.response.data);
-    }
   }
 }
 

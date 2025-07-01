@@ -34,9 +34,21 @@ app.get("/api/trades", async (req, res) => {
 })
 
 app.get("/api/candles", async (req, res) => {
-  const { symbol = "ETH", interval = "1m" } = req.query;
-  const candles = await Candle.find({ symbol, interval }).sort({ startTime: 1 }).limit(100);
-  res.json(candles);
+  try {
+    const { symbol, interval = '1m', limit = 100 } = req.query;
+    
+    const filter = {};
+    if (symbol) filter.symbol = symbol;
+    if (interval) filter.interval = interval;
+    
+    const data = await Candle.find(filter)
+      .sort({ startTime: -1 })
+      .limit(parseInt(limit));
+    
+    res.json(data.reverse()); // Reverse để có thứ tự tăng dần
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get("/api/candles/debug", async (req, res) => {
@@ -51,6 +63,38 @@ app.get("/api/candles/debug", async (req, res) => {
       latestCandle: latest,
       candlesBySymbol: bySymbol
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint để lấy available intervals
+app.get("/api/intervals", async (req, res) => {
+  try {
+    const { symbol } = req.query;
+    
+    const filter = {};
+    if (symbol) filter.symbol = symbol;
+    
+    const intervals = await Candle.distinct('interval', filter);
+    res.json(intervals.sort());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint để force aggregation
+app.post("/api/aggregate", async (req, res) => {
+  try {
+    const CandleAggregator = require("./services/CandleAggregator");
+    const aggregator = new CandleAggregator();
+    
+    const { symbols = ['ETH', 'BTC', 'SOL'] } = req.body;
+    
+    // Run aggregation in background
+    aggregator.runAggregation(symbols);
+    
+    res.json({ message: "Aggregation started", symbols });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -120,6 +164,54 @@ app.get("/api/oi/debug", async (req, res) => {
       { $group: { _id: "$symbol", count: { $sum: 1 } } }
     ]);
     res.json({ count, latest, bySymbol });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Debug endpoint để kiểm tra data trong DB
+app.get("/api/debug/:symbol", async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    
+    const stats = {
+      symbol,
+      tickers: await Ticker.countDocuments({ symbol }),
+      candles: await Candle.countDocuments({ symbol }),
+      funding: await Funding.countDocuments({ symbol }),
+      oi: await OI.countDocuments({ symbol }),
+      
+      // Recent data
+      recentTickers: await Ticker.find({ symbol }).sort({ time: -1 }).limit(5),
+      recentCandles: await Candle.find({ symbol }).sort({ startTime: -1 }).limit(5),
+      
+      // Available intervals
+      intervals: await Candle.distinct('interval', { symbol })
+    };
+    
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint kiểm tra tất cả symbols
+app.get("/api/debug-all", async (req, res) => {
+  try {
+    const symbols = ['ETH', 'BTC', 'SOL'];
+    const results = {};
+    
+    for (const symbol of symbols) {
+      results[symbol] = {
+        tickers: await Ticker.countDocuments({ symbol }),
+        candles: await Candle.countDocuments({ symbol }),
+        funding: await Funding.countDocuments({ symbol }),
+        oi: await OI.countDocuments({ symbol }),
+        intervals: await Candle.distinct('interval', { symbol })
+      };
+    }
+    
+    res.json(results);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

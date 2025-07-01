@@ -1,27 +1,27 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import Chart from "./components/Chart";
 import CandleChart from "./components/CandleChart";
-import TradeTable from "./components/TradeTable";
 import FundingChart from "./components/FundingChart";
-import OIChart from "./components/OIChart"
+import OIChart from "./components/OIChart";
 
-const symbols = ["ETH", "BTC", "SOL"];
 
 function App() {
   const [symbol, setSymbol] = useState("ETH");
+  const [interval, setInterval] = useState("1m");
+  const [candles, setCandles] = useState([]);
   const [trades, setTrades] = useState([]);
-  const [candles, setCandle] = useState([]);
-  const [status, setStatus] = useState(null);
-  const [lastUpdate, setLastUpdate] = useState(null);
   const [funding, setFunding] = useState([]);
   const [oi, setOI] = useState([]);
+  const [status, setStatus] = useState({});
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [availableIntervals, setAvailableIntervals] = useState([]);
+  const [debugInfo, setDebugInfo] = useState({});
 
   const fetchData = () => {
-    axios.get(`http://localhost:4000/api/candles?symbol=${symbol}`)
+    axios.get(`http://localhost:4000/api/candles?symbol=${symbol}&interval=${interval}`)
       .then(res => {
-        console.log(`📊 Fetched ${res.data.length} candles for ${symbol}`);
-        setCandle(res.data);
+        console.log(`📊 Fetched ${res.data.length} ${interval} candles for ${symbol}`);
+        setCandles(res.data);
         setLastUpdate(new Date());
       })
       .catch(console.error);
@@ -40,13 +40,6 @@ function App() {
     axios.get(`http://localhost:4000/api/oi?symbol=${symbol}`)
       .then(res => {
         console.log(`📈 Fetched ${res.data.length} OI records for ${symbol}:`, res.data);
-        
-        // Debug: Log cấu trúc của từng record
-        if (res.data.length > 0) {
-          console.log("🔍 First OI record structure:", res.data[0]);
-          console.log("🔍 OI record keys:", Object.keys(res.data[0]));
-        }
-        
         setOI(res.data);
       })
       .catch(console.error);
@@ -58,65 +51,156 @@ function App() {
       .catch(console.error);
   };
 
+  const fetchIntervals = () => {
+    axios.get(`http://localhost:4000/api/intervals?symbol=${symbol}`)
+      .then(res => setAvailableIntervals(res.data))
+      .catch(console.error);
+  };
+
+  const fetchDebugInfo = () => {
+    axios.get(`http://localhost:4000/api/debug/${symbol}`)
+      .then(res => {
+        console.log(`🔍 Debug info for ${symbol}:`, res.data);
+        setDebugInfo(res.data);
+      })
+      .catch(console.error);
+  };
+
   useEffect(() => {
     fetchData();
     fetchStatus();
+    fetchIntervals();
+    fetchDebugInfo(); // Thêm debug info
     
-    // Auto refresh mỗi 10 giây
     const interval = setInterval(() => {
       fetchData();
       fetchStatus();
+      fetchDebugInfo(); // Update debug info
     }, 10000);
     
     return () => clearInterval(interval);
-  }, [symbol]);
+  }, [symbol, interval]);
+
+  const triggerAggregation = () => {
+    console.log("🔄 Triggering aggregation...");
+    axios.post(`http://localhost:4000/api/aggregate`, { symbols: [symbol] })
+      .then(res => {
+        console.log("✅ Aggregation triggered:", res.data);
+        alert(`✅ Aggregation started for ${symbol}`);
+        setTimeout(() => {
+          fetchData();
+          fetchIntervals();
+        }, 5000); // Refresh after 5 seconds
+      })
+      .catch(err => {
+        console.error("❌ Aggregation error:", err);
+        alert("❌ Aggregation failed");
+      });
+  };
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">
-        🔥 HyperLiquid Perp Dashboard - {symbol}
-        <span className="text-sm font-normal text-gray-600 ml-2">(Perpetual Futures)</span>
-      </h1>
-
-      <div className="flex gap-4 mb-4">
-        <select
-          className="p-2 border rounded"
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
-        >
-          {symbols.map(sym => (
-            <option key={sym} value={sym}>{sym}</option>
-          ))}
-        </select>
+    <div className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-6">📊 HyperSignal Dashboard</h1>
+      
+      <div className="flex gap-4 mb-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Symbol</label>
+          <select
+            value={symbol}
+            onChange={(e) => setSymbol(e.target.value)}
+            className="border rounded px-3 py-2"
+          >
+            <option value="ETH">ETH</option>
+            <option value="BTC">BTC</option>
+            <option value="SOL">SOL</option>
+          </select>
+        </div>
         
-        <button 
-          onClick={fetchData}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          🔄 Refresh
-        </button>
+        <div>
+          <label className="block text-sm font-medium mb-1">Timeframe</label>
+          <select
+            value={interval}
+            onChange={(e) => setInterval(e.target.value)}
+            className="border rounded px-3 py-2"
+          >
+            <option value="1m">1 Minute</option>
+            <option value="5m">5 Minutes</option>
+            <option value="15m">15 Minutes</option>
+            <option value="30m">30 Minutes</option>
+            <option value="1h">1 Hour</option>
+            <option value="4h">4 Hours</option>
+            <option value="1d">1 Day</option>
+          </select>
+        </div>
         
-        <span className="px-3 py-2 bg-gray-100 rounded">
-          📊 {candles.length} nến
-        </span>
+        <div className="flex items-end gap-2">
+          <button
+            onClick={triggerAggregation}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+          >
+            🔄 Aggregate
+          </button>
+          
+          <button
+            onClick={() => {
+              fetchData();
+              fetchIntervals();
+            }}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+          >
+            🔄 Refresh
+          </button>
+        </div>
       </div>
 
-      <CandleChart data={candles} />
-      <h2 className="mt-6 text-lg font-semibold">Recent Trades ({trades.length})</h2>
-      <TradeTable trades={trades} />
-      <FundingChart data={funding} />
-      <OIChart data={oi} />
-
-      {status && (
-        <div className="mt-6 p-4 border rounded bg-gray-50">
-          <h3 className="font-semibold">Trạng thái hệ thống</h3>
-          <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(status, null, 2)}</pre>
+      {availableIntervals.length > 0 && (
+        <div className="mb-4 p-3 bg-gray-50 rounded">
+          <span className="text-sm text-gray-600">Available intervals: </span>
+          <span className="text-sm font-medium">{availableIntervals.join(", ")}</span>
         </div>
       )}
 
-      {lastUpdate && (
-        <div className="mt-4 text-sm text-gray-500">
-          Cập nhật lần cuối: {lastUpdate.toLocaleTimeString()}
+      <CandleChart data={candles} symbol={symbol} interval={interval} />
+      <FundingChart data={funding} />
+      <OIChart data={oi} />
+  
+
+      {status && (
+        <div className="mt-6 p-4 border rounded bg-gray-50">
+          <h3 className="font-semibold mb-2">📊 Trạng thái hệ thống</h3>
+          <pre className="text-sm">{JSON.stringify(status, null, 2)}</pre>
+          {lastUpdate && (
+            <p className="text-xs text-gray-500 mt-2">
+              Last update: {lastUpdate.toLocaleTimeString()}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Thêm debug section */}
+      {debugInfo && Object.keys(debugInfo).length > 0 && (
+        <div className="mt-6 p-4 border rounded bg-blue-50">
+          <h3 className="font-semibold mb-2">🔍 Debug Info for {symbol}</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="font-medium">Tickers:</span> {debugInfo.tickers || 0}
+            </div>
+            <div>
+              <span className="font-medium">Candles:</span> {debugInfo.candles || 0}
+            </div>
+            <div>
+              <span className="font-medium">Funding:</span> {debugInfo.funding || 0}
+            </div>
+            <div>
+              <span className="font-medium">OI:</span> {debugInfo.oi || 0}
+            </div>
+          </div>
+          {debugInfo.intervals && debugInfo.intervals.length > 0 && (
+            <div className="mt-2">
+              <span className="font-medium text-sm">DB Intervals:</span> 
+              <span className="text-sm ml-2">{debugInfo.intervals.join(', ')}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
