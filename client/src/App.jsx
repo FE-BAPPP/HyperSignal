@@ -3,6 +3,8 @@ import axios from "axios";
 import Chart from "./components/Chart";
 import CandleChart from "./components/CandleChart";
 import TradeTable from "./components/TradeTable";
+import FundingChart from "./components/FundingChart";
+import OIChart from "./components/OIChart"
 
 const symbols = ["ETH", "BTC", "SOL"];
 
@@ -12,6 +14,8 @@ function App() {
   const [candles, setCandle] = useState([]);
   const [status, setStatus] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [funding, setFunding] = useState([]);
+  const [oi, setOI] = useState([]);
 
   const fetchData = () => {
     axios.get(`http://localhost:4000/api/candles?symbol=${symbol}`)
@@ -23,6 +27,12 @@ function App() {
       .catch(console.error);
     axios.get(`http://localhost:4000/api/trades?symbol=${symbol}`)
       .then(res => setTrades(res.data))
+      .catch(console.error);
+    axios.get(`http://localhost:4000/api/funding?symbol=${symbol}`)
+      .then(res => setFunding(res.data))
+      .catch(console.error);
+    axios.get(`http://localhost:4000/api/oi?symbol=${symbol}`)
+      .then(res => setOI(res.data))
       .catch(console.error);
   };
 
@@ -78,6 +88,8 @@ function App() {
       <CandleChart data={candles} />
       <h2 className="mt-6 text-lg font-semibold">Recent Trades ({trades.length})</h2>
       <TradeTable trades={trades} />
+      <FundingChart data={funding} />
+      <OIChart data={oi} />
 
       {status && (
         <div className="mt-6 p-4 border rounded bg-gray-50">

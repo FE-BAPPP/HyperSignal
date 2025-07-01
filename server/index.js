@@ -98,6 +98,33 @@ app.get("/api/status", async (req, res) => {
   }
 });
 
+// Thêm endpoint debug cho funding và oi
+app.get("/api/funding/debug", async (req, res) => {
+  try {
+    const count = await Funding.countDocuments();
+    const latest = await Funding.findOne().sort({ createdAt: -1 });
+    const bySymbol = await Funding.aggregate([
+      { $group: { _id: "$symbol", count: { $sum: 1 } } }
+    ]);
+    res.json({ count, latest, bySymbol });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/oi/debug", async (req, res) => {
+  try {
+    const count = await OI.countDocuments();
+    const latest = await OI.findOne().sort({ createdAt: -1 });
+    const bySymbol = await OI.aggregate([
+      { $group: { _id: "$symbol", count: { $sum: 1 } } }
+    ]);
+    res.json({ count, latest, bySymbol });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(process.env.PORT, () =>
   console.log(`🚀 Backend running on port ${process.env.PORT}`)
 );
