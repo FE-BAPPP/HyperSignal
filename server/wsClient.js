@@ -1,6 +1,8 @@
 const WebSocket = require("ws");
 const Ticker = require("./models/Ticker");
 const Candle = require("./models/Candle");
+const Funding = require("./models/FundingRate");
+const OI = require("./models/OpenInterest");
 
 const SYMBOLS = ["ETH", "BTC", "SOL"];
 
@@ -26,7 +28,24 @@ function startWebSocket() {
             coin: coin,
             interval: "1m"
         }
-      }));
+      })
+      );
+      ws.send(JSON.stringify({
+        method: "subscribe",
+        subscription: {
+          type: "funding",
+          coin: coin,
+        }
+      })
+      );
+      ws.send(JSON.stringify({
+        method: "subscribe",
+        subscription: {
+          type: "oi",
+          coin: coin,
+        }
+      })
+      );
     });
     
   });
@@ -119,7 +138,24 @@ function startWebSocket() {
         else { 
             console.warn("⚠️ Unknown message format:", m);
         }
-
+      // Xử lý dữ liệu funding rate
+      if (m.channel === "funding" && m.data?.coin) {
+        await Funding.create({
+          symbol: m.data.coin,
+          rate: parseFloat(m.data.fundingRate),
+          time: new Date(m.data.time),
+        });
+        console.log(`[FUNDING] ${m.data.coin}: ${m.data.fundingRate}`);
+      }
+      // Xử lý dữ liệu open interest
+      if (m.channel === "oi" && m.data?.coin) {
+        await OI.create({
+          symbol: m.data.coin,
+          oi: parseFloat(m.data.oi),
+          time: new Date(m.data.time),
+        });
+        console.log(`[OI] ${m.data.coin}: ${m.data.oi}`);
+      }
 
 
     } catch (err) {

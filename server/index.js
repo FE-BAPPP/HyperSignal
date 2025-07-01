@@ -5,6 +5,8 @@ const dotenv = require("dotenv");
 const Ticker = require("./models/Ticker");
 const startWebSocket = require("./wsClient");
 const Candle = require("./models/Candle");
+const Funding = require("./models/FundingRate");
+const OI = require("./models/OpenInterest");
 
 dotenv.config();
 const app = express();
@@ -52,6 +54,19 @@ app.get("/api/candles/debug", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+// Endpoint để lấy dữ liệu Funding Rate
+app.get("/api/funding", async (req, res) => {
+  const { symbol } = req.query;
+  const data = await Funding.find({ symbol }).sort({ time: 1 }).limit(200);
+  res.json(data);
+});
+// Endpoint để lấy dữ liệu Open Interest
+app.get("/api/oi", async (req, res) => {
+  const { symbol } = req.query;
+  const data = await OI.find({ symbol }).sort({ time: 1 }).limit(200);
+  res.json(data);
 });
 
 // Endpoint để xem tổng quan dữ liệu
