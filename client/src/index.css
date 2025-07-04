@@ -4,38 +4,167 @@
 
 @layer base {
   body {
-    @apply bg-gray-900 text-white;
+    @apply bg-gray-900 text-white font-sans;
   }
   
-  /* Dark theme scrollbars */
+  /* Modern scrollbars */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   
   ::-webkit-scrollbar-track {
-    @apply bg-gray-800;
+    @apply bg-gray-800 rounded;
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-600 rounded;
+    @apply bg-gray-600 rounded hover:bg-gray-500;
   }
   
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-500;
+  ::-webkit-scrollbar-corner {
+    @apply bg-gray-800;
   }
 }
 
 @layer components {
   .chart-container {
-    @apply bg-gray-800 rounded-lg border border-gray-700;
+    @apply bg-gray-800 rounded-xl border border-gray-700 shadow-xl;
   }
   
-  .indicator-active {
-    @apply bg-blue-600 text-white border-blue-500;
+  .trading-card {
+    @apply bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 shadow-xl hover:shadow-2xl transition-all duration-300;
   }
   
-  .indicator-inactive {
-    @apply bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600;
+  .price-positive {
+    @apply text-green-400 bg-green-600 bg-opacity-20;
+  }
+  
+  .price-negative {
+    @apply text-red-400 bg-red-600 bg-opacity-20;
+  }
+  
+  .indicator-chip {
+    @apply px-3 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .gradient-border {
+    @apply bg-gradient-to-r from-blue-500 to-purple-600 p-0.5 rounded-xl;
+  }
+  
+  .glass-effect {
+    @apply bg-gray-800 bg-opacity-80 backdrop-blur-sm border border-gray-700;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent;
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+/* Custom animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+/* Trading interface specific styles */
+.trading-grid {
+  display: grid;
+  grid-template-areas: 
+    "header header header"
+    "sidebar chart panel"
+    "sidebar chart panel";
+  grid-template-columns: 320px 1fr 300px;
+  grid-template-rows: 64px 1fr;
+  height: 100vh;
+}
+
+@media (max-width: 1024px) {
+  .trading-grid {
+    grid-template-areas: 
+      "header header"
+      "chart chart"
+      "sidebar panel";
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 64px 1fr auto;
+  }
+}
+
+/* Price ticker animations */
+.price-ticker {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+.price-up {
+  @apply text-green-400;
+  animation: priceFlash 0.5s ease-in-out;
+}
+
+.price-down {
+  @apply text-red-400;
+  animation: priceFlash 0.5s ease-in-out;
+}
+
+@keyframes priceFlash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+
+/* Modern button styles */
+.btn-primary {
+  @apply bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl;
+}
+
+.btn-secondary {
+  @apply bg-gray-700 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200;
+}
+
+.btn-ghost {
+  @apply text-gray-400 hover:text-white hover:bg-gray-700 px-3 py-2 rounded-lg transition-all duration-200;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .trading-grid {
+    grid-template-areas: 
+      "header"
+      "chart"
+      "sidebar";
+    grid-template-columns: 1fr;
+    grid-template-rows: 64px 1fr auto;
   }
 }
