@@ -219,18 +219,173 @@ app.get("/api/debug-all", async (req, res) => {
   }
 });
 
-// Technical Indicators API
+// Fix the /api/signals/all endpoint
+
+app.get('/api/signals/all', async (req, res) => {
+  try {
+    const { symbols = 'ETH,BTC,SOL', intervals = '1m,5m,15m,30m' } = req.query; // Default to fast intervals
+    
+    const symbolList = symbols.split(',').map(s => s.trim());
+    const intervalList = intervals.split(',').map(i => i.trim());
+    
+    console.log(`🎯 Generating signals for symbols: ${symbolList}, intervals: ${intervalList}`);
+    
+    const SignalEngine = require('./services/SignalEngine');
+    const allSignals = await SignalEngine.generateAllSignals(symbolList, intervalList);
+    
+    const response = {
+      bullish: allSignals.bullish || [],
+      bearish: allSignals.bearish || [],
+      total: allSignals.total || 0,
+      timestamp: allSignals.timestamp || new Date(),
+      symbols: symbolList,
+      intervals: intervalList,
+      debug: {
+        requestedSymbols: symbolList,
+        requestedIntervals: intervalList,
+        bullishCount: allSignals.bullish?.length || 0,
+        bearishCount: allSignals.bearish?.length || 0
+      }
+    };
+    
+    console.log(`✅ API Response: ${response.total} signals (${response.bullish.length} bullish, ${response.bearish.length} bearish)`);
+    res.json(response);
+    
+  } catch (err) {
+    console.error('❌ Error in /api/signals/all:', err);
+    res.status(500).json({ 
+      error: err.message,
+      bullish: [],
+      bearish: [],
+      total: 0,
+      timestamp: new Date()
+    });
+  }
+});
+
+// Add specific endpoint for frontend
+app.get('/api/signals/dashboard', async (req, res) => {
+  try {
+    console.log('🎯 Dashboard signals request...');
+    
+    const SignalEngine = require('./services/SignalEngine');
+    
+    // Get signals from fast timeframes that have data
+    const fastSignals = await SignalEngine.generateAllSignals(['ETH', 'BTC', 'SOL'], ['1m', '5m']);
+    
+    // Get signals from medium timeframes  
+    const mediumSignals = await SignalEngine.generateAllSignals(['ETH', 'BTC', 'SOL'], ['15m', '30m']);
+    
+    // Combine all signals
+    const allSignals = [
+      ...fastSignals.bullish,
+      ...fastSignals.bearish,
+      ...mediumSignals.bullish,
+      ...mediumSignals.bearish
+    ];
+    
+    const response = {
+      bullish: allSignals.filter(s => s.type === 'bullish').sort((a, b) => b.strength - a.strength),
+      bearish: allSignals.filter(s => s.type === 'bearish').sort((a, b) => b.strength - a.strength),
+      total: allSignals.length,
+      timestamp: new Date(),
+      breakdown: {
+        fast: {
+          bullish: fastSignals.bullish.length,
+          bearish: fastSignals.bearish.length,
+          timeframes: ['1m', '5m']
+        },
+        medium: {
+          bullish: mediumSignals.bullish.length,
+          bearish: mediumSignals.bearish.length,
+          timeframes: ['15m', '30m']
+        }
+      }
+    };
+    
+    console.log(`✅ Dashboard signals: ${response.total} total (${response.bullish.length} bullish, ${response.bearish.length} bearish)`);
+    res.json(response);
+    
+  } catch (err) {
+    console.error('❌ Error in dashboard signals:', err);
+    res.status(500).json({ 
+      error: err.message,
+      bullish: [],
+      bearish: [],
+      total: 0,
+      timestamp: new Date()
+    });
+  }
+});
+
+// Debug endpoint để kiểm tra data trong DB
+app.get("/api/debug/:symbol", async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    
+    const stats = {
+      symbol,
+      tickers: await Ticker.countDocuments({ symbol }),
+      candles: await Candle.countDocuments({ symbol }),
+      funding: await Funding.countDocuments({ symbol }),
+      oi: await OI.countDocuments({ symbol }),
+      
+      // Recent data
+      recentTickers: await Ticker.find({ symbol }).sort({ time: -1 }).limit(5),
+      recentCandles: await Candle.find({ symbol }).sort({ startTime: -1 }).limit(5),
+      
+      // Available intervals
+      intervals: await Candle.distinct('interval', { symbol })
+    };
+    
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint kiểm tra tất cả symbols
+app.get("/api/debug-all", async (req, res) => {
+  try {
+    const symbols = ['ETH', 'BTC', 'SOL'];
+    const results = {};
+    
+    for (const symbol of symbols) {
+      results[symbol] = {
+        tickers: await Ticker.countDocuments({ symbol }),
+        candles: await Candle.countDocuments({ symbol }),
+        funding: await Funding.countDocuments({ symbol }),
+        oi: await OI.countDocuments({ symbol }),
+        intervals: await Candle.distinct('interval', { symbol })
+      };
+    }
+    
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get technical indicators for a symbol
 app.get('/api/indicators/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
     const { interval = '1h', limit = 100 } = req.query;
     
+    console.log(`📊 Fetching indicators for ${symbol} ${interval}`);
+    
     const indicators = await TechnicalIndicators.calculateAllIndicators(symbol, interval, parseInt(limit));
     
     if (!indicators) {
-      return res.status(404).json({ error: `No data available for ${symbol} ${interval}` });
+      return res.status(404).json({ 
+        error: `No data available for ${symbol} ${interval}`,
+        symbol,
+        interval,
+        timestamp: new Date()
+      });
     }
     
+    console.log(`✅ Indicators calculated for ${symbol} ${interval}`);
     res.json(indicators);
   } catch (err) {
     console.error('❌ Error fetching indicators:', err);
@@ -238,11 +393,13 @@ app.get('/api/indicators/:symbol', async (req, res) => {
   }
 });
 
-// Signals API
+// Get signals for a specific symbol
 app.get('/api/signals/:symbol', async (req, res) => {
   try {
     const { symbol } = req.params;
     const { interval = '1h' } = req.query;
+    
+    console.log(`🎯 Generating signals for ${symbol} ${interval}`);
     
     const signals = await SignalEngine.generateSignals(symbol, interval);
     
@@ -259,81 +416,63 @@ app.get('/api/signals/:symbol', async (req, res) => {
   }
 });
 
-// All signals API
-app.get('/api/signals/all', async (req, res) => {
-  try {
-    const { symbols = 'ETH,BTC,SOL', intervals = '1h,4h' } = req.query;
-    
-    const symbolList = symbols.split(',');
-    const intervalList = intervals.split(',');
-    
-    console.log(`🎯 Generating signals for symbols: ${symbolList}, intervals: ${intervalList}`);
-    
-    const allSignals = await SignalEngine.generateAllSignals(symbolList, intervalList);
-    
-    // Đảm bảo format đúng
-    const response = {
-      bullish: allSignals.bullish || [],
-      bearish: allSignals.bearish || [],
-      total: allSignals.total || 0,
-      timestamp: allSignals.timestamp || new Date(),
-      symbols: symbolList,
-      intervals: intervalList
-    };
-    
-    console.log(`✅ Returning ${response.total} signals (${response.bullish.length} bullish, ${response.bearish.length} bearish)`);
-    res.json(response);
-    
-  } catch (err) {
-    console.error('❌ Error generating all signals:', err);
-    res.status(500).json({ 
-      error: err.message,
-      bullish: [],
-      bearish: [],
-      total: 0,
-      timestamp: new Date()
-    });
-  }
-});
+// Add this missing endpoint (you defined it as POST but it's missing in the file)
 
-// Top signals API
-app.get('/api/signals/top', async (req, res) => {
+app.get('/api/test/any-signals', async (req, res) => {
   try {
-    const { limit = 10 } = req.query;
+    console.log('🧪 Testing signals with any available data...');
     
-    console.log(`🏆 Fetching top ${limit} signals...`);
+    // Find any available candle data
+    const availableData = await Candle.aggregate([
+      {
+        $group: {
+          _id: { symbol: '$symbol', interval: '$interval' },
+          count: { $sum: 1 },
+          latest: { $max: '$startTime' }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
     
-    const allSignals = await SignalEngine.generateAllSignals(['ETH', 'BTC', 'SOL'], ['1h', '4h']);
+    console.log('📊 Available candle data:', availableData);
     
-    if (!allSignals.bullish || !allSignals.bearish) {
+    if (availableData.length === 0) {
       return res.json({
-        topSignals: [],
-        count: 0,
+        message: 'No candle data available in database',
+        suggestion: 'Run aggregation first: POST /api/aggregate',
         timestamp: new Date()
       });
     }
     
-    const topSignals = [...allSignals.bullish, ...allSignals.bearish]
-      .sort((a, b) => b.strength - a.strength)
-      .slice(0, parseInt(limit));
+    // Test with the most abundant data
+    const { symbol, interval } = availableData[0]._id;
+    console.log(`🎯 Testing with ${symbol} ${interval} (${availableData[0].count} candles)`);
+    
+    const testSignals = await SignalEngine.generateSignals(symbol, interval);
     
     res.json({
-      topSignals,
-      count: topSignals.length,
-      timestamp: new Date()
+      message: 'SignalEngine test with available data',
+      usedData: availableData[0],
+      testResults: {
+        symbol,
+        interval,
+        signalCount: testSignals.length,
+        signals: testSignals.slice(0, 5), // Show first 5
+        timestamp: new Date()
+      },
+      allAvailableData: availableData
     });
     
   } catch (err) {
-    console.error('❌ Error fetching top signals:', err);
+    console.error('❌ Test failed:', err);
     res.status(500).json({ 
       error: err.message,
-      topSignals: [],
-      count: 0,
-      timestamp: new Date()
+      message: 'Test failed'
     });
   }
 });
 
-app.listen(process.env.PORT, () =>
-  console.log(`🚀 Backend running on port ${process.env.PORT}`)
-);
+app.listen(process.env.PORT, () => {
+  console.log(`🚀 Server is running on port ${process.env.PORT}`);
+});

@@ -1,7 +1,9 @@
 // server/services/SignalEngine.js
 const TechnicalIndicators = require('./TechnicalIndicators');
 const Candle = require('../models/Candle');
-const FundingRate = require('../models/FundingRate');
+
+// Remove FundingRate dependency nếu không có
+// const FundingRate = require('../models/FundingRate');
 
 class SignalEngine {
   static async generateSignals(symbol, interval = '1h') {
@@ -9,37 +11,45 @@ class SignalEngine {
       console.log(`🔍 Generating signals for ${symbol} ${interval}...`);
       
       const indicators = await TechnicalIndicators.calculateAllIndicators(symbol, interval, 100);
-      if (!indicators) return [];
+      if (!indicators) {
+        console.log(`⚠️ No indicators data for ${symbol} ${interval}`);
+        return [];
+      }
       
       const signals = [];
       
       // RSI Signals
-      signals.push(...this.detectRSISignals(symbol, interval, indicators));
+      const rsiSignals = this.detectRSISignals(symbol, interval, indicators);
+      signals.push(...rsiSignals);
       
       // MACD Signals  
-      signals.push(...this.detectMACDSignals(symbol, interval, indicators));
+      const macdSignals = this.detectMACDSignals(symbol, interval, indicators);
+      signals.push(...macdSignals);
       
       // Bollinger Bands Signals
-      signals.push(...this.detectBollingerSignals(symbol, interval, indicators));
-      
-      // Support/Resistance Signals
-      signals.push(...this.detectSRSignals(symbol, interval, indicators));
+      const bbSignals = this.detectBollingerSignals(symbol, interval, indicators);
+      signals.push(...bbSignals);
       
       // Moving Average Signals
-      signals.push(...this.detectMASignals(symbol, interval, indicators));
+      const maSignals = this.detectMASignals(symbol, interval, indicators);
+      signals.push(...maSignals);
       
-      // Funding Rate Signals
-      const fundingSignals = await this.detectFundingSignals(symbol, interval);
-      signals.push(...fundingSignals);
+      // Funding Rate Signals (optional)
+      try {
+        const fundingSignals = await this.detectFundingSignals(symbol, interval);
+        signals.push(...fundingSignals);
+      } catch (err) {
+        console.log(`⚠️ Skipping funding signals for ${symbol}: ${err.message}`);
+      }
       
-      // Volume Signals
-      signals.push(...this.detectVolumeSignals(symbol, interval, indicators));
+      // Sort by strength
+      const sortedSignals = signals.sort((a, b) => b.strength - a.strength);
       
-      console.log(`✅ Generated ${signals.length} signals for ${symbol} ${interval}`);
-      return signals.sort((a, b) => b.strength - a.strength);
+      console.log(`✅ Generated ${sortedSignals.length} signals for ${symbol} ${interval}`);
+      return sortedSignals;
       
     } catch (err) {
-      console.error(`❌ Error generating signals for ${symbol}:`, err.message);
+      console.error(`❌ Error generating signals for ${symbol} ${interval}:`, err.message);
       return [];
     }
   }
@@ -48,20 +58,26 @@ class SignalEngine {
   static detectRSISignals(symbol, interval, indicators) {
     const signals = [];
     const rsi = indicators.rsi;
-    if (rsi.length === 0) return signals;
+    
+    if (!rsi || rsi.length === 0) {
+      console.log(`⚠️ No RSI data for ${symbol} ${interval}`);
+      return signals;
+    }
     
     const currentRSI = rsi[rsi.length - 1];
-    const prevRSI = rsi[rsi.length - 2];
+    const prevRSI = rsi.length > 1 ? rsi[rsi.length - 2] : currentRSI; // Use current if no previous
     
-    // RSI Oversold (< 30) turning up
-    if (currentRSI < 35 && prevRSI < currentRSI && currentRSI > 25) {
+    console.log(`📊 RSI for ${symbol} ${interval}: current=${currentRSI.toFixed(1)}, prev=${prevRSI.toFixed(1)}`);
+    
+    // RSI Oversold (< 35) - lowered threshold
+    if (currentRSI < 35) {
       signals.push({
         symbol,
         interval,
         type: 'bullish',
-        signalType: 'rsi_oversold_reversal',
-        description: `RSI oversold reversal (${currentRSI.toFixed(1)})`,
-        strength: Math.min(95, 100 - currentRSI * 2), // Stronger signal when more oversold
+        signalType: 'rsi_oversold',
+        description: `RSI oversold (${currentRSI.toFixed(1)})`,
+        strength: Math.min(95, 100 - currentRSI * 2),
         price: indicators.currentPrice,
         rsi: currentRSI,
         detectedAt: new Date(),
@@ -69,15 +85,31 @@ class SignalEngine {
       });
     }
     
-    // RSI Overbought (> 70) turning down
-    if (currentRSI > 65 && prevRSI > currentRSI && currentRSI < 75) {
+    // RSI Overbought (> 65) - lowered threshold
+    if (currentRSI > 65) {
       signals.push({
         symbol,
         interval,
         type: 'bearish',
-        signalType: 'rsi_overbought_reversal',
-        description: `RSI overbought reversal (${currentRSI.toFixed(1)})`,
+        signalType: 'rsi_overbought',
+        description: `RSI overbought (${currentRSI.toFixed(1)})`,
         strength: Math.min(95, (currentRSI - 50) * 2),
+        price: indicators.currentPrice,
+        rsi: currentRSI,
+        detectedAt: new Date(),
+        timeframe: interval
+      });
+    }
+    
+    // RSI divergence - if we have enough data
+    if (rsi.length > 2 && prevRSI < currentRSI && currentRSI > 30 && currentRSI < 50) {
+      signals.push({
+        symbol,
+        interval,
+        type: 'bullish',
+        signalType: 'rsi_bullish_divergence',
+        description: `RSI showing bullish momentum (${currentRSI.toFixed(1)})`,
+        strength: 60,
         price: indicators.currentPrice,
         rsi: currentRSI,
         detectedAt: new Date(),
@@ -91,7 +123,14 @@ class SignalEngine {
   // MACD Crossover Signals
   static detectMACDSignals(symbol, interval, indicators) {
     const signals = [];
-    const { macd, signal, histogram } = indicators.macd;
+    const macdData = indicators.macd;
+    
+    if (!macdData || !macdData.macd || !macdData.signal || !macdData.histogram) {
+      console.log(`⚠️ No MACD data for ${symbol} ${interval}`);
+      return signals;
+    }
+    
+    const { macd, signal, histogram } = macdData;
     
     if (macd.length < 2 || signal.length < 2) return signals;
     
@@ -141,17 +180,21 @@ class SignalEngine {
   // Bollinger Bands Signals
   static detectBollingerSignals(symbol, interval, indicators) {
     const signals = [];
-    const { upper, middle, lower } = indicators.bollingerBands;
+    const bbData = indicators.bollingerBands;
     const currentPrice = indicators.currentPrice;
     
-    if (upper.length === 0) return signals;
+    if (!bbData || !bbData.upper || !bbData.lower || bbData.upper.length === 0) {
+      console.log(`⚠️ No Bollinger Bands data for ${symbol} ${interval}`);
+      return signals;
+    }
     
+    const { upper, middle, lower } = bbData;
     const currentUpper = upper[upper.length - 1];
     const currentMiddle = middle[middle.length - 1];
     const currentLower = lower[lower.length - 1];
     
     // Price touching lower band (oversold)
-    if (currentPrice <= currentLower * 1.005) { // 0.5% tolerance
+    if (currentPrice <= currentLower * 1.01) { // 1% tolerance
       signals.push({
         symbol,
         interval,
@@ -167,7 +210,7 @@ class SignalEngine {
     }
     
     // Price touching upper band (overbought)  
-    if (currentPrice >= currentUpper * 0.995) { // 0.5% tolerance
+    if (currentPrice >= currentUpper * 0.99) { // 1% tolerance
       signals.push({
         symbol,
         interval,
@@ -185,60 +228,16 @@ class SignalEngine {
     return signals;
   }
 
-  // Support/Resistance Signals
-  static detectSRSignals(symbol, interval, indicators) {
-    const signals = [];
-    const { supports, resistances } = indicators.supportResistance;
-    const currentPrice = indicators.currentPrice;
-    
-    // Check proximity to strong support levels
-    for (const support of supports.filter(s => s.strength >= 3)) {
-      const distance = Math.abs(currentPrice - support.price) / support.price;
-      if (distance < 0.01) { // Within 1%
-        signals.push({
-          symbol,
-          interval,
-          type: 'bullish',
-          signalType: 'support_bounce',
-          description: `Price near strong support level`,
-          strength: Math.min(85, support.strength * 15),
-          price: currentPrice,
-          supportLevel: support.price,
-          detectedAt: new Date(),
-          timeframe: interval
-        });
-      }
-    }
-    
-    // Check proximity to strong resistance levels
-    for (const resistance of resistances.filter(r => r.strength >= 3)) {
-      const distance = Math.abs(currentPrice - resistance.price) / resistance.price;
-      if (distance < 0.01) { // Within 1%
-        signals.push({
-          symbol,
-          interval,
-          type: 'bearish',
-          signalType: 'resistance_rejection',
-          description: `Price near strong resistance level`,
-          strength: Math.min(85, resistance.strength * 15),
-          price: currentPrice,
-          resistanceLevel: resistance.price,
-          detectedAt: new Date(),
-          timeframe: interval
-        });
-      }
-    }
-    
-    return signals;
-  }
-
   // Moving Average Signals
   static detectMASignals(symbol, interval, indicators) {
     const signals = [];
-    const { sma20, sma50, ema12, ema26 } = indicators;
+    const { sma20, sma50 } = indicators;
     const currentPrice = indicators.currentPrice;
     
-    if (sma20.length < 2 || sma50.length < 2) return signals;
+    if (!sma20 || !sma50 || sma20.length < 2 || sma50.length < 2) {
+      console.log(`⚠️ No SMA data for ${symbol} ${interval}`);
+      return signals;
+    }
     
     const currentSMA20 = sma20[sma20.length - 1];
     const prevSMA20 = sma20[sma20.length - 2];
@@ -282,23 +281,25 @@ class SignalEngine {
     return signals;
   }
 
-  // Funding Rate Signals
+  // Funding Rate Signals (optional)
   static async detectFundingSignals(symbol, interval) {
     const signals = [];
     
     try {
+      // Try to get funding rate data
+      const FundingRate = require('../models/FundingRate');
+      
       const recentFunding = await FundingRate.find({ symbol })
         .sort({ timestamp: -1 })
-        .limit(10)
+        .limit(5)
         .lean();
         
       if (recentFunding.length === 0) return signals;
       
       const currentFunding = recentFunding[0].rate;
-      const avgFunding = recentFunding.reduce((sum, f) => sum + f.rate, 0) / recentFunding.length;
       
       // Extremely high funding (shorts paying longs)
-      if (currentFunding > 0.01) { // > 1%
+      if (currentFunding > 0.01) {
         signals.push({
           symbol,
           interval,
@@ -313,7 +314,7 @@ class SignalEngine {
       }
       
       // Extremely negative funding (longs paying shorts)
-      if (currentFunding < -0.01) { // < -1%
+      if (currentFunding < -0.01) {
         signals.push({
           symbol,
           interval,
@@ -328,31 +329,30 @@ class SignalEngine {
       }
       
     } catch (err) {
-      console.error(`❌ Error detecting funding signals:`, err.message);
+      // Skip funding signals if model doesn't exist
+      console.log(`⚠️ No funding rate model or data for ${symbol}`);
     }
     
-    return signals;
-  }
-
-  // Volume Signals
-  static detectVolumeSignals(symbol, interval, indicators) {
-    const signals = [];
-    // Volume analysis sẽ được implement sau khi có volume data tốt hơn
     return signals;
   }
 
   // Generate signals for all symbols
-  static async generateAllSignals(symbols = ['ETH', 'BTC', 'SOL'], intervals = ['1h', '4h']) {
+  static async generateAllSignals(symbols = ['ETH', 'BTC', 'SOL'], intervals = ['5m', '15m', '30m', '1h']) {
     const allSignals = [];
+    
+    console.log(`🎯 Generating signals for ${symbols.length} symbols, ${intervals.length} intervals...`);
     
     for (const symbol of symbols) {
       for (const interval of intervals) {
-        const signals = await this.generateSignals(symbol, interval);
-        allSignals.push(...signals);
+        try {
+          const signals = await this.generateSignals(symbol, interval);
+          allSignals.push(...signals);
+        } catch (err) {
+          console.error(`❌ Error generating signals for ${symbol} ${interval}:`, err.message);
+        }
       }
     }
     
-    // Sort by strength và group by type
     const result = {
       bullish: allSignals.filter(s => s.type === 'bullish').sort((a, b) => b.strength - a.strength),
       bearish: allSignals.filter(s => s.type === 'bearish').sort((a, b) => b.strength - a.strength),

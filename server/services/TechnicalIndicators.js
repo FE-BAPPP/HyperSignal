@@ -245,72 +245,86 @@ class TechnicalIndicators {
   static async calculateAllIndicators(symbol, interval = '1h', limit = 100) {
     const Candle = require('../models/Candle');
     
-    const candles = await Candle.find({ symbol, interval })
-      .sort({ startTime: -1 })
-      .limit(limit)
-      .lean();
+    console.log(`📊 Calculating indicators for ${symbol} ${interval}, limit: ${limit}`);
     
-    if (candles.length < 20) {
-      console.log(`⚠️ Not enough data for ${symbol} ${interval} indicators`);
+    try {
+      const candles = await Candle.find({ symbol, interval })
+        .sort({ startTime: -1 })
+        .limit(limit)
+        .lean();
+      
+      console.log(`📊 Found ${candles.length} candles for ${symbol} ${interval}`);
+      
+      if (candles.length === 0) {
+        console.log(`⚠️ No candles found for ${symbol} ${interval}`);
+        return null;
+      }
+      
+      // Lower requirements - accept even 5+ candles
+      if (candles.length < 5) {
+        console.log(`⚠️ Not enough candles for any indicators: ${candles.length} < 5 for ${symbol} ${interval}`);
+        return null;
+      }
+      
+      // Reverse to chronological order for calculations
+      candles.reverse();
+      
+      const prices = candles.map(c => c.close);
+      const highs = candles.map(c => c.high);
+      const lows = candles.map(c => c.low);
+      const volumes = candles.map(c => c.volume || 1);
+      
+      console.log(`📊 Processing ${prices.length} price points for ${symbol} ${interval}`);
+      
+      // Adaptive periods based on available data
+      const availableLength = prices.length;
+      const rsiPeriod = Math.min(14, Math.max(5, availableLength - 1));
+      const smaPeriod = Math.min(20, Math.max(5, availableLength - 1));
+      const emaPeriod = Math.min(12, Math.max(3, availableLength - 1));
+      const macdFast = Math.min(12, Math.max(3, availableLength - 1));
+      const macdSlow = Math.min(26, Math.max(6, availableLength - 1));
+      
+      console.log(`📊 Using adaptive periods: RSI=${rsiPeriod}, SMA=${smaPeriod}, EMA=${emaPeriod}`);
+      
+      const indicators = {
+        symbol,
+        interval,
+        timestamp: new Date(),
+        candleCount: candles.length,
+        
+        // Trend Indicators (adaptive)
+        sma20: availableLength >= 5 ? this.calculateSMA(prices, Math.min(smaPeriod, availableLength - 1)) : [],
+        sma50: availableLength >= 10 ? this.calculateSMA(prices, Math.min(50, availableLength - 1)) : [],
+        ema12: availableLength >= 3 ? this.calculateEMA(prices, Math.min(emaPeriod, availableLength - 1)) : [],
+        ema26: availableLength >= 6 ? this.calculateEMA(prices, Math.min(26, availableLength - 1)) : [],
+        
+        // Oscillators (adaptive)
+        rsi: availableLength >= 6 ? this.calculateRSI(prices, rsiPeriod) : [],
+        
+        // Momentum (adaptive)
+        macd: availableLength >= 10 ? this.calculateMACD(prices, macdFast, Math.min(macdSlow, availableLength - 1), 3) : { macd: [], signal: [], histogram: [] },
+        
+        // Volatility (adaptive)
+        bollingerBands: availableLength >= 10 ? this.calculateBollingerBands(prices, Math.min(20, availableLength - 1), 2) : { upper: [], middle: [], lower: [] },
+        
+        // Current Values
+        currentPrice: prices[prices.length - 1],
+        priceChange24h: availableLength >= 2 ? 
+          ((prices[prices.length - 1] - prices[0]) / prices[0]) * 100 : 0,
+        
+        // Market Summary
+        high24h: Math.max(...prices),
+        low24h: Math.min(...prices),
+        volume24h: volumes.reduce((a, b) => a + b, 0)
+      };
+      
+      console.log(`✅ Indicators calculated for ${symbol} ${interval}: RSI=${indicators.rsi.length}, SMA20=${indicators.sma20.length}, MACD=${indicators.macd.macd.length}`);
+      return indicators;
+      
+    } catch (err) {
+      console.error(`❌ Error calculating indicators for ${symbol} ${interval}:`, err.message);
       return null;
     }
-    
-    candles.reverse();
-    
-    const prices = candles.map(c => c.close);
-    const highs = candles.map(c => c.high);
-    const lows = candles.map(c => c.low);
-    const opens = candles.map(c => c.open);
-    const volumes = candles.map(c => c.volume || 1);
-    
-    const stoch = this.calculateStochastic(highs, lows, prices);
-    const atr = this.calculateATR(highs, lows, prices);
-    const williamsR = this.calculateWilliamsR(highs, lows, prices);
-    
-    const indicators = {
-      symbol,
-      interval,
-      timestamp: new Date(),
-      
-      // Trend Indicators
-      sma20: this.calculateSMA(prices, 20),
-      sma50: this.calculateSMA(prices, 50),
-      sma100: this.calculateSMA(prices, 100),
-      ema12: this.calculateEMA(prices, 12),
-      ema26: this.calculateEMA(prices, 26),
-      ema50: this.calculateEMA(prices, 50),
-      
-      // Oscillators
-      rsi: this.calculateRSI(prices, 14),
-      stochastic: stoch,
-      williamsR: williamsR,
-      
-      // Momentum
-      macd: this.calculateMACD(prices),
-      
-      // Volatility
-      bollingerBands: this.calculateBollingerBands(prices, 20, 2),
-      atr: atr,
-      
-      // Volume
-      vwap: this.calculateVWAP(candles),
-      
-      // Support/Resistance
-      supportResistance: this.calculateSupportResistance(candles, 50),
-      
-      // Current Values
-      currentPrice: prices[prices.length - 1],
-      currentVolume: volumes[volumes.length - 1],
-      priceChange24h: ((prices[prices.length - 1] - prices[Math.max(0, prices.length - 24)]) / prices[Math.max(0, prices.length - 24)]) * 100,
-      
-      // Market Summary
-      high24h: Math.max(...prices.slice(-24)),
-      low24h: Math.min(...prices.slice(-24)),
-      volume24h: volumes.slice(-24).reduce((a, b) => a + b, 0)
-    };
-    
-    console.log(`📊 Enhanced indicators calculated for ${symbol} ${interval}`);
-    return indicators;
   }
 }
 
