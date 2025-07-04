@@ -7,6 +7,8 @@ const startWebSocket = require("./wsClient");
 const Candle = require("./models/Candle");
 const Funding = require("./models/FundingRate");
 const OI = require("./models/OpenInterest");
+const TechnicalIndicators = require('./services/TechnicalIndicators');
+const SignalEngine = require('./services/SignalEngine');
 
 dotenv.config();
 const app = express();
@@ -214,6 +216,121 @@ app.get("/api/debug-all", async (req, res) => {
     res.json(results);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Technical Indicators API
+app.get('/api/indicators/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const { interval = '1h', limit = 100 } = req.query;
+    
+    const indicators = await TechnicalIndicators.calculateAllIndicators(symbol, interval, parseInt(limit));
+    
+    if (!indicators) {
+      return res.status(404).json({ error: `No data available for ${symbol} ${interval}` });
+    }
+    
+    res.json(indicators);
+  } catch (err) {
+    console.error('❌ Error fetching indicators:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Signals API
+app.get('/api/signals/:symbol', async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const { interval = '1h' } = req.query;
+    
+    const signals = await SignalEngine.generateSignals(symbol, interval);
+    
+    res.json({
+      symbol,
+      interval,
+      signals,
+      count: signals.length,
+      timestamp: new Date()
+    });
+  } catch (err) {
+    console.error('❌ Error generating signals:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// All signals API
+app.get('/api/signals/all', async (req, res) => {
+  try {
+    const { symbols = 'ETH,BTC,SOL', intervals = '1h,4h' } = req.query;
+    
+    const symbolList = symbols.split(',');
+    const intervalList = intervals.split(',');
+    
+    console.log(`🎯 Generating signals for symbols: ${symbolList}, intervals: ${intervalList}`);
+    
+    const allSignals = await SignalEngine.generateAllSignals(symbolList, intervalList);
+    
+    // Đảm bảo format đúng
+    const response = {
+      bullish: allSignals.bullish || [],
+      bearish: allSignals.bearish || [],
+      total: allSignals.total || 0,
+      timestamp: allSignals.timestamp || new Date(),
+      symbols: symbolList,
+      intervals: intervalList
+    };
+    
+    console.log(`✅ Returning ${response.total} signals (${response.bullish.length} bullish, ${response.bearish.length} bearish)`);
+    res.json(response);
+    
+  } catch (err) {
+    console.error('❌ Error generating all signals:', err);
+    res.status(500).json({ 
+      error: err.message,
+      bullish: [],
+      bearish: [],
+      total: 0,
+      timestamp: new Date()
+    });
+  }
+});
+
+// Top signals API
+app.get('/api/signals/top', async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+    
+    console.log(`🏆 Fetching top ${limit} signals...`);
+    
+    const allSignals = await SignalEngine.generateAllSignals(['ETH', 'BTC', 'SOL'], ['1h', '4h']);
+    
+    if (!allSignals.bullish || !allSignals.bearish) {
+      return res.json({
+        topSignals: [],
+        count: 0,
+        timestamp: new Date()
+      });
+    }
+    
+    const topSignals = [...allSignals.bullish, ...allSignals.bearish]
+      .sort((a, b) => b.strength - a.strength)
+      .slice(0, parseInt(limit));
+    
+    res.json({
+      topSignals,
+      count: topSignals.length,
+      timestamp: new Date()
+    });
+    
+  } catch (err) {
+    console.error('❌ Error fetching top signals:', err);
+    res.status(500).json({ 
+      error: err.message,
+      topSignals: [],
+      count: 0,
+      timestamp: new Date()
+    });
   }
 });
 

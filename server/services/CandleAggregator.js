@@ -179,7 +179,7 @@ class CandleAggregator {
     return d;
   }
 
-  // Chạy aggregation cho tất cả timeframes
+  // Chạy aggregation cho tất cả timeframes với signal generation
   async runAggregation(symbols = ['ETH', 'BTC', 'SOL']) {
     console.log('🔄 Starting full candle aggregation...');
     
@@ -196,12 +196,49 @@ class CandleAggregator {
         await this.aggregateFromBaseCandles(symbol, '1m', '1d');
         
         console.log(`✅ Completed aggregation for ${symbol}`);
+        
+        // Generate signals after aggregation
+        await this.generateSignalsForSymbol(symbol);
+        
       } catch (err) {
         console.error(`❌ Error aggregating ${symbol}:`, err.message);
       }
     }
     
     console.log('✅ Full candle aggregation completed');
+  }
+
+  // Generate signals for a symbol
+  async generateSignalsForSymbol(symbol) {
+    try {
+      const TechnicalIndicators = require('./TechnicalIndicators');
+      const SignalEngine = require('./SignalEngine');
+      
+      console.log(`🎯 Generating signals for ${symbol}...`);
+      
+      // Generate signals for multiple timeframes
+      const timeframes = ['1h', '4h'];
+      let totalSignals = 0;
+      
+      for (const timeframe of timeframes) {
+        const signals = await SignalEngine.generateSignals(symbol, timeframe);
+        totalSignals += signals.length;
+        
+        if (signals.length > 0) {
+          console.log(`🎯 [${symbol} ${timeframe}] Generated ${signals.length} signals:`);
+          signals.slice(0, 3).forEach(signal => {
+            console.log(`   ${signal.type === 'bullish' ? '📈' : '📉'} ${signal.signalType}: ${signal.strength}% - ${signal.description}`);
+          });
+        }
+      }
+      
+      if (totalSignals > 0) {
+        console.log(`✅ [${symbol}] Total ${totalSignals} signals generated`);
+      }
+      
+    } catch (err) {
+      console.error(`❌ Error generating signals for ${symbol}:`, err.message);
+    }
   }
 }
 
