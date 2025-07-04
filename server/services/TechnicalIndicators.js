@@ -182,7 +182,66 @@ class TechnicalIndicators {
     return touches;
   }
 
-  // Calculate all indicators for a symbol
+  // Stochastic Oscillator
+  static calculateStochastic(highs, lows, closes, kPeriod = 14, dPeriod = 3) {
+    const k = [];
+    const d = [];
+    
+    for (let i = kPeriod - 1; i < closes.length; i++) {
+      const highestHigh = Math.max(...highs.slice(i - kPeriod + 1, i + 1));
+      const lowestLow = Math.min(...lows.slice(i - kPeriod + 1, i + 1));
+      
+      const kValue = ((closes[i] - lowestLow) / (highestHigh - lowestLow)) * 100;
+      k.push(kValue);
+    }
+    
+    // Calculate %D (SMA of %K)
+    for (let i = dPeriod - 1; i < k.length; i++) {
+      const dValue = k.slice(i - dPeriod + 1, i + 1).reduce((a, b) => a + b) / dPeriod;
+      d.push(dValue);
+    }
+    
+    return { k, d };
+  }
+
+  // Williams %R
+  static calculateWilliamsR(highs, lows, closes, period = 14) {
+    const wr = [];
+    
+    for (let i = period - 1; i < closes.length; i++) {
+      const highestHigh = Math.max(...highs.slice(i - period + 1, i + 1));
+      const lowestLow = Math.min(...lows.slice(i - period + 1, i + 1));
+      
+      const wrValue = ((highestHigh - closes[i]) / (highestHigh - lowestLow)) * -100;
+      wr.push(wrValue);
+    }
+    
+    return wr;
+  }
+
+  // Average True Range
+  static calculateATR(highs, lows, closes, period = 14) {
+    const tr = [];
+    const atr = [];
+    
+    for (let i = 1; i < closes.length; i++) {
+      const hl = highs[i] - lows[i];
+      const hc = Math.abs(highs[i] - closes[i - 1]);
+      const lc = Math.abs(lows[i] - closes[i - 1]);
+      
+      tr.push(Math.max(hl, hc, lc));
+    }
+    
+    // Calculate ATR (SMA of TR)
+    for (let i = period - 1; i < tr.length; i++) {
+      const atrValue = tr.slice(i - period + 1, i + 1).reduce((a, b) => a + b) / period;
+      atr.push(atrValue);
+    }
+    
+    return atr;
+  }
+
+  // Enhanced calculateAllIndicators
   static async calculateAllIndicators(symbol, interval = '1h', limit = 100) {
     const Candle = require('../models/Candle');
     
@@ -196,31 +255,61 @@ class TechnicalIndicators {
       return null;
     }
     
-    // Reverse to chronological order for calculations
     candles.reverse();
     
     const prices = candles.map(c => c.close);
     const highs = candles.map(c => c.high);
     const lows = candles.map(c => c.low);
+    const opens = candles.map(c => c.open);
+    const volumes = candles.map(c => c.volume || 1);
+    
+    const stoch = this.calculateStochastic(highs, lows, prices);
+    const atr = this.calculateATR(highs, lows, prices);
+    const williamsR = this.calculateWilliamsR(highs, lows, prices);
     
     const indicators = {
       symbol,
       interval,
       timestamp: new Date(),
-      rsi: this.calculateRSI(prices, 14),
-      macd: this.calculateMACD(prices),
-      bollingerBands: this.calculateBollingerBands(prices, 20, 2),
+      
+      // Trend Indicators
       sma20: this.calculateSMA(prices, 20),
       sma50: this.calculateSMA(prices, 50),
+      sma100: this.calculateSMA(prices, 100),
       ema12: this.calculateEMA(prices, 12),
       ema26: this.calculateEMA(prices, 26),
+      ema50: this.calculateEMA(prices, 50),
+      
+      // Oscillators
+      rsi: this.calculateRSI(prices, 14),
+      stochastic: stoch,
+      williamsR: williamsR,
+      
+      // Momentum
+      macd: this.calculateMACD(prices),
+      
+      // Volatility
+      bollingerBands: this.calculateBollingerBands(prices, 20, 2),
+      atr: atr,
+      
+      // Volume
       vwap: this.calculateVWAP(candles),
+      
+      // Support/Resistance
       supportResistance: this.calculateSupportResistance(candles, 50),
+      
+      // Current Values
       currentPrice: prices[prices.length - 1],
-      priceChange24h: ((prices[prices.length - 1] - prices[Math.max(0, prices.length - 24)]) / prices[Math.max(0, prices.length - 24)]) * 100
+      currentVolume: volumes[volumes.length - 1],
+      priceChange24h: ((prices[prices.length - 1] - prices[Math.max(0, prices.length - 24)]) / prices[Math.max(0, prices.length - 24)]) * 100,
+      
+      // Market Summary
+      high24h: Math.max(...prices.slice(-24)),
+      low24h: Math.min(...prices.slice(-24)),
+      volume24h: volumes.slice(-24).reduce((a, b) => a + b, 0)
     };
     
-    console.log(`📊 Calculated indicators for ${symbol} ${interval}`);
+    console.log(`📊 Enhanced indicators calculated for ${symbol} ${interval}`);
     return indicators;
   }
 }

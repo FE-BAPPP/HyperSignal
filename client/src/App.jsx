@@ -5,10 +5,11 @@ import FundingChart from "./components/FundingChart";
 import OIChart from "./components/OIChart";
 import SignalDashboard from "./components/SignalDashboard";
 import TechnicalIndicators from "./components/TechnicalIndicators";
+import IndicatorFilters from "./components/IndicatorFilters";
 
 function App() {
   const [symbol, setSymbol] = useState("ETH");
-  const [timeframe, setTimeframe] = useState("1m");
+  const [timeframe, setTimeframe] = useState("1h");
   const [candles, setCandles] = useState([]);
   const [trades, setTrades] = useState([]);
   const [funding, setFunding] = useState([]);
@@ -18,7 +19,9 @@ function App() {
   const [availableIntervals, setAvailableIntervals] = useState([]);
   const [debugInfo, setDebugInfo] = useState({});
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('charts'); // New state for tabs
+  const [activeTab, setActiveTab] = useState('trading');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [selectedIndicators, setSelectedIndicators] = useState(new Set(['RSI', 'MACD', 'BB']));
 
   const fetchData = () => {
     setLoading(true);
@@ -136,255 +139,206 @@ function App() {
       });
   };
 
+  const handleIndicatorSelect = (indicators, selected) => {
+    setSelectedIndicators(selected);
+  };
+
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">📊 HyperSignal Dashboard</h1>
-      
-      {/* Tab Navigation */}
-      <div className="flex border-b mb-6">
-        <button
-          onClick={() => setActiveTab('charts')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'charts' 
-              ? 'border-b-2 border-blue-500 text-blue-600' 
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          📈 Charts
-        </button>
-        <button
-          onClick={() => setActiveTab('signals')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'signals' 
-              ? 'border-b-2 border-blue-500 text-blue-600' 
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          🎯 Signals
-        </button>
-        <button
-          onClick={() => setActiveTab('indicators')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'indicators' 
-              ? 'border-b-2 border-blue-500 text-blue-600' 
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          📊 Indicators
-        </button>
-      </div>
-      
-      {/* Controls - Show only on charts tab */}
-      {activeTab === 'charts' && (
-        <div className="flex gap-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium mb-1">Symbol</label>
-            <select
-              value={symbol}
-              onChange={(e) => {
-                console.log(`📊 Symbol changed to: ${e.target.value}`);
-                setSymbol(e.target.value);
-              }}
-              className="border rounded px-3 py-2"
-              disabled={loading}
-            >
-              <option value="ETH">ETH</option>
-              <option value="BTC">BTC</option>
-              <option value="SOL">SOL</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Timeframe</label>
-            <select
-              value={timeframe}
-              onChange={(e) => {
-                console.log(`📊 Timeframe changed to: ${e.target.value}`);
-                setTimeframe(e.target.value);
-              }}
-              className="border rounded px-3 py-2"
-              disabled={loading}
-            >
-              <option value="1m">1 Minute</option>
-              <option value="5m">5 Minutes</option>
-              <option value="15m">15 Minutes</option>
-              <option value="30m">30 Minutes</option>
-              <option value="1h">1 Hour</option>
-              <option value="4h">4 Hours</option>
-              <option value="1d">1 Day</option>
-            </select>
-          </div>
-          
-          <div className="flex items-end gap-2">
-            <button
-              onClick={triggerAggregation}
-              disabled={loading}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
-            >
-              {loading ? '⏳' : '🔄'} Aggregate
-            </button>
-            
-            <button
-              onClick={() => {
-                console.log(`🔄 Manual refresh: ${symbol} ${timeframe}`);
-                fetchData();
-                fetchIntervals();
-                fetchDebugInfo();
-              }}
-              disabled={loading}
-              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50 transition-colors"
-            >
-              {loading ? '⏳' : '🔄'} Refresh
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Loading indicator */}
-      {loading && (
-        <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
-          <div className="flex items-center gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            <span className="text-blue-700">Loading {symbol} {timeframe} data...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Tab Content */}
-      {activeTab === 'charts' && (
-        <>
-          {/* Available intervals */}
-          {availableIntervals.length > 0 && (
-            <div className="mb-4 p-3 bg-gray-50 rounded">
-              <span className="text-sm text-gray-600">Available intervals: </span>
-              <span className="text-sm font-medium">{availableIntervals.join(", ")}</span>
-              <span className={`ml-2 px-2 py-1 text-xs rounded ${
-                availableIntervals.includes(timeframe) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-              }`}>
-                {availableIntervals.includes(timeframe) ? `✅ ${timeframe} available` : `❌ ${timeframe} not available`}
-              </span>
-            </div>
+    <div className="h-screen bg-gray-900 text-white flex">
+      {/* Sidebar - HyperLiquid style */}
+      <div className={`bg-gray-800 border-r border-gray-700 transition-all duration-300 ${
+        sidebarOpen ? 'w-80' : 'w-12'
+      }`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+          {sidebarOpen && (
+            <h1 className="text-xl font-bold text-blue-400">📊 HyperSignal</h1>
           )}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="text-gray-400 hover:text-white"
+          >
+            {sidebarOpen ? '◀' : '▶'}
+          </button>
+        </div>
 
-          {/* Main Chart */}
-          <CandleChart data={candles} symbol={symbol} interval={timeframe} />
-          
-          {/* Other Charts */}
-          <FundingChart data={funding} />
-          <OIChart data={oi} />
-
-          {/* Debug Info */}
-          {debugInfo && Object.keys(debugInfo).length > 0 && (
-            <div className="mt-6 p-4 border rounded bg-blue-50">
-              <h3 className="font-semibold mb-2">🔍 Debug Info for {symbol}</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="font-medium">Tickers:</span> 
-                  <span className={debugInfo.tickers > 0 ? 'text-green-600 font-bold' : 'text-red-600'}>
-                    {debugInfo.tickers || 0}
-                  </span>
+        {sidebarOpen && (
+          <>
+            {/* Symbol & Timeframe Selector */}
+            <div className="p-4 border-b border-gray-700">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Market</label>
+                  <select
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  >
+                    <option value="ETH">ETH-PERP</option>
+                    <option value="BTC">BTC-PERP</option>
+                    <option value="SOL">SOL-PERP</option>
+                  </select>
                 </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Candles:</span> 
-                  <span className={debugInfo.candles > 0 ? 'text-green-600 font-bold' : 'text-red-600'}>
-                    {debugInfo.candles || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Funding:</span> 
-                  <span className={debugInfo.funding > 0 ? 'text-green-600 font-bold' : 'text-red-600'}>
-                    {debugInfo.funding || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">OI:</span> 
-                  <span className={debugInfo.oi > 0 ? 'text-green-600 font-bold' : 'text-red-600'}>
-                    {debugInfo.oi || 0}
-                  </span>
+                
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Timeframe</label>
+                  <div className="grid grid-cols-4 gap-1">
+                    {['1m', '5m', '15m', '30m', '1h', '4h', '1d'].map(tf => (
+                      <button
+                        key={tf}
+                        onClick={() => setTimeframe(tf)}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          timeframe === tf 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                      >
+                        {tf.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-              
-              {debugInfo.intervals && debugInfo.intervals.length > 0 && (
-                <div className="mt-3 p-2 bg-white rounded border">
-                  <span className="font-medium text-sm text-gray-700">Available in DB:</span> 
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {debugInfo.intervals.map(int => (
-                      <span key={int} className={`px-2 py-1 text-xs rounded ${
-                        int === timeframe ? 'bg-blue-100 text-blue-700 font-bold' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {int}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {debugInfo.recentCandles && debugInfo.recentCandles.length > 0 && (
-                <div className="mt-3 p-2 bg-white rounded border">
-                  <span className="font-medium text-sm text-gray-700">Recent Candles ({timeframe}):</span>
-                  <div className="mt-1 text-xs">
-                    {debugInfo.recentCandles.slice(0, 3).map((candle, i) => (
-                      <div key={i} className="text-gray-600">
-                        {new Date(candle.startTime).toLocaleString()}: O:{candle.open} H:{candle.high} L:{candle.low} C:{candle.close}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
-          )}
 
-          {/* System Status */}
-          {status && Object.keys(status).length > 0 && (
-            <div className="mt-6 p-4 border rounded bg-gray-50">
-              <h3 className="font-semibold mb-2">📊 System Status</h3>
-              <pre className="text-sm overflow-auto max-h-40">{JSON.stringify(status, null, 2)}</pre>
-              {lastUpdate && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Last update: {lastUpdate.toLocaleTimeString()}
-                </p>
-              )}
+            {/* Indicators Panel */}
+            <div className="flex-1 overflow-hidden">
+              <IndicatorFilters 
+                symbol={symbol} 
+                interval={timeframe}
+                onIndicatorSelect={handleIndicatorSelect}
+              />
             </div>
-          )}
-        </>
-      )}
 
-      {activeTab === 'signals' && <SignalDashboard />}
-      
-      {activeTab === 'indicators' && (
-        <div>
-          {/* Symbol selector for indicators */}
-          <div className="flex gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium mb-1">Symbol</label>
-              <select
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
-                className="border rounded px-3 py-2"
+            {/* Quick Actions */}
+            <div className="p-4 border-t border-gray-700 space-y-2">
+              <button
+                onClick={triggerAggregation}
+                disabled={loading}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-4 py-2 rounded transition-colors"
               >
-                <option value="ETH">ETH</option>
-                <option value="BTC">BTC</option>
-                <option value="SOL">SOL</option>
-              </select>
+                {loading ? '⏳ Processing...' : '🔄 Aggregate Data'}
+              </button>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setActiveTab('trading')}
+                  className={`px-3 py-2 text-xs rounded transition-colors ${
+                    activeTab === 'trading' ? 'bg-gray-600' : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                >
+                  📈 Charts
+                </button>
+                <button
+                  onClick={() => setActiveTab('signals')}
+                  className={`px-3 py-2 text-xs rounded transition-colors ${
+                    activeTab === 'signals' ? 'bg-gray-600' : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                >
+                  🎯 Signals
+                </button>
+              </div>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Timeframe</label>
-              <select
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-                className="border rounded px-3 py-2"
-              >
-                <option value="1h">1 Hour</option>
-                <option value="4h">4 Hours</option>
-                <option value="1d">1 Day</option>
-              </select>
-            </div>
+          </>
+        )}
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Bar */}
+        <div className="h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold">
+              {symbol}-PERP <span className="text-gray-400">{timeframe.toUpperCase()}</span>
+            </h2>
+            {candles.length > 0 && (
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-green-400">${candles[candles.length - 1]?.close?.toFixed(2)}</span>
+                <span className="text-gray-400">•</span>
+                <span className="text-gray-400">{candles.length} candles</span>
+              </div>
+            )}
           </div>
           
-          <TechnicalIndicators symbol={symbol} interval={timeframe} />
+          <div className="flex items-center gap-3">
+            {lastUpdate && (
+              <span className="text-xs text-gray-400">
+                Updated: {lastUpdate.toLocaleTimeString()}
+              </span>
+            )}
+            <button
+              onClick={() => {
+                fetchData();
+                fetchStatus();
+              }}
+              className="text-gray-400 hover:text-white"
+            >
+              🔄
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto">
+          {activeTab === 'trading' && (
+            <div className="p-6">
+              {/* Main Chart */}
+              <div className="bg-gray-800 rounded-lg p-4 mb-6">
+                <CandleChart data={candles} symbol={symbol} interval={timeframe} />
+              </div>
+
+              {/* Secondary Charts Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <FundingChart data={funding} />
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <OIChart data={oi} />
+                </div>
+              </div>
+
+              {/* Debug Panel */}
+              {debugInfo && Object.keys(debugInfo).length > 0 && (
+                <div className="mt-6 bg-gray-800 rounded-lg p-4">
+                  <h3 className="font-semibold mb-3 text-gray-300">🔍 System Status</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Trades:</span>
+                      <span className={debugInfo.tickers > 0 ? 'text-green-400' : 'text-red-400'}>
+                        {debugInfo.tickers || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Candles:</span>
+                      <span className={debugInfo.candles > 0 ? 'text-green-400' : 'text-red-400'}>
+                        {debugInfo.candles || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Funding:</span>
+                      <span className={debugInfo.funding > 0 ? 'text-green-400' : 'text-red-400'}>
+                        {debugInfo.funding || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">OI:</span>
+                      <span className={debugInfo.oi > 0 ? 'text-green-400' : 'text-red-400'}>
+                        {debugInfo.oi || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'signals' && (
+            <div className="p-6">
+              <SignalDashboard />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

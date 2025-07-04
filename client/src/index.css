@@ -4,6 +4,38 @@
 
 @layer base {
   body {
-    @apply bg-gray-100 text-gray-900;
+    @apply bg-gray-900 text-white;
+  }
+  
+  /* Dark theme scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-800;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+}
+
+@layer components {
+  .chart-container {
+    @apply bg-gray-800 rounded-lg border border-gray-700;
+  }
+  
+  .indicator-active {
+    @apply bg-blue-600 text-white border-blue-500;
+  }
+  
+  .indicator-inactive {
+    @apply bg-gray-700 text-gray-300 border-gray-600 hover:bg-gray-600;
   }
 }
