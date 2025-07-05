@@ -315,7 +315,13 @@ class TechnicalIndicators {
         // Market Summary
         high24h: Math.max(...prices),
         low24h: Math.min(...prices),
-        volume24h: volumes.reduce((a, b) => a + b, 0)
+        volume24h: volumes.reduce((a, b) => a + b, 0),
+
+        // Support & Resistance
+        supportResistance: this.calculateSupportResistance(candles),
+
+        // VWAP
+        vwap: this.calculateVWAP(candles),
       };
       
       console.log(`✅ Indicators calculated for ${symbol} ${interval}: RSI=${indicators.rsi.length}, SMA20=${indicators.sma20.length}, MACD=${indicators.macd.macd.length}`);
