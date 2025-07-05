@@ -4,16 +4,20 @@ import { useState, useEffect } from "react"
 import axios from "axios"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast, Toaster } from "react-hot-toast"
+import { ArrowTrendingUpIcon, ArrowTrendingDownIcon, XMarkIcon, Cog6ToothIcon } from "@heroicons/react/24/outline"
 import {
-  ChartBarIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
-  Bars3Icon,
-  XMarkIcon,
-  Cog6ToothIcon,
-  EyeIcon,
-  EyeSlashIcon,
-} from "@heroicons/react/24/outline"
+  TrendingUp,
+  TrendingDown,
+  Bitcoin,
+  Zap,
+  Circle,
+  BarChart3,
+  RefreshCw,
+  EyeIcon as EyeIconLucide,
+  EyeOffIcon as EyeOffIconLucide,
+  Menu,
+  Sparkles,
+} from "lucide-react"
 import CandleChart from "./components/CandleChart"
 import FundingChart from "./components/FundingChart"
 import OIChart from "./components/OIChart"
@@ -49,9 +53,30 @@ function App() {
   })
 
   const symbols = [
-    { value: "ETH", label: "ETH-PERP", icon: "🔷", price: 0, change: 0 },
-    { value: "BTC", label: "BTC-PERP", icon: "₿", price: 0, change: 0 },
-    { value: "SOL", label: "SOL-PERP", icon: "◎", price: 0, change: 0 },
+    {
+      value: "ETH",
+      label: "ETH-PERP",
+      icon: <Zap className="w-4 h-4 text-blue-400" />,
+      color: "#3B82F6",
+      price: 0,
+      change: 0,
+    },
+    {
+      value: "BTC",
+      label: "BTC-PERP",
+      icon: <Bitcoin className="w-4 h-4 text-orange-400" />,
+      color: "#F97316",
+      price: 0,
+      change: 0,
+    },
+    {
+      value: "SOL",
+      label: "SOL-PERP",
+      icon: <Circle className="w-4 h-4 text-purple-400" />,
+      color: "#A855F7",
+      price: 0,
+      change: 0,
+    },
   ]
 
   const timeframes = [
@@ -175,7 +200,10 @@ function App() {
         <div className="flex items-center gap-4">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <ChartBarIcon className="w-6 h-6 text-[#f0b90b]" />
+            <div className="relative">
+              <BarChart3 className="w-6 h-6 text-[#f0b90b]" />
+              <Sparkles className="w-3 h-3 text-[#f0b90b] absolute -top-1 -right-1 animate-pulse" />
+            </div>
             <span className="text-lg font-bold text-white">HyperSignal</span>
           </div>
 
@@ -235,9 +263,10 @@ function App() {
           <button
             onClick={triggerAggregation}
             disabled={loading}
-            className="bg-[#f0b90b] hover:bg-[#f0b90b]/80 text-black px-3 py-1 rounded text-sm font-medium disabled:opacity-50"
+            className="bg-[#f0b90b] hover:bg-[#f0b90b]/80 text-black px-3 py-1 rounded text-sm font-medium disabled:opacity-50 flex items-center gap-2 transition-all duration-200 hover:scale-105"
           >
-            {loading ? "⏳" : "🔄"} Aggregate
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Aggregate
           </button>
         </div>
       </div>
@@ -280,12 +309,17 @@ function App() {
                       <div
                         key={sym.value}
                         onClick={() => setSymbol(sym.value)}
-                        className={`flex items-center justify-between p-3 cursor-pointer hover:bg-[#2b3139] border-b border-[#2b3139]/50 ${
-                          symbol === sym.value ? "bg-[#2b3139]" : ""
+                        className={`flex items-center justify-between p-3 cursor-pointer hover:bg-[#2b3139] border-b border-[#2b3139]/50 transition-all duration-200 group ${
+                          symbol === sym.value ? "bg-[#2b3139] border-l-2 border-[#f0b90b]" : ""
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{sym.icon}</span>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`p-2 rounded-lg transition-all duration-200 group-hover:scale-110`}
+                            style={{ backgroundColor: `${sym.color}20` }}
+                          >
+                            {sym.icon}
+                          </div>
                           <div>
                             <div className="text-white font-medium">{sym.label}</div>
                             <div className="text-xs text-[#848e9c]">Perpetual</div>
@@ -296,12 +330,17 @@ function App() {
                             ${symbol === sym.value ? marketData.price?.toFixed(2) : "0.00"}
                           </div>
                           <div
-                            className={`text-xs ${
+                            className={`text-xs flex items-center gap-1 ${
                               symbol === sym.value && marketData.changePercent24h >= 0
                                 ? "text-[#02c076]"
                                 : "text-[#f84960]"
                             }`}
                           >
+                            {symbol === sym.value && marketData.changePercent24h >= 0 ? (
+                              <TrendingUp className="w-3 h-3" />
+                            ) : (
+                              <TrendingDown className="w-3 h-3" />
+                            )}
                             {symbol === sym.value
                               ? `${marketData.changePercent24h >= 0 ? "+" : ""}${marketData.changePercent24h?.toFixed(2)}%`
                               : "0.00%"}
@@ -410,8 +449,11 @@ function App() {
           {/* Chart Toolbar */}
           <div className="h-10 bg-[#1e2329] border-b border-[#2b3139] flex items-center px-4 gap-4">
             {!leftSidebarOpen && (
-              <button onClick={() => setLeftSidebarOpen(true)} className="text-[#848e9c] hover:text-white">
-                <Bars3Icon className="w-5 h-5" />
+              <button
+                onClick={() => setLeftSidebarOpen(true)}
+                className="text-[#848e9c] hover:text-white p-2 rounded hover:bg-[#2b3139] transition-all duration-200"
+              >
+                <Menu className="w-5 h-5" />
               </button>
             )}
 
@@ -435,13 +477,17 @@ function App() {
             <div className="flex items-center gap-2 ml-4">
               <button
                 onClick={() => setShowIndicatorOverlay(!showIndicatorOverlay)}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                className={`flex items-center gap-2 px-3 py-1 text-xs rounded transition-all duration-200 ${
                   showIndicatorOverlay
-                    ? "bg-[#f0b90b] text-black"
+                    ? "bg-[#f0b90b] text-black shadow-lg"
                     : "text-[#848e9c] hover:text-white hover:bg-[#2b3139]"
                 }`}
               >
-                {showIndicatorOverlay ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                {showIndicatorOverlay ? (
+                  <EyeOffIconLucide className="w-4 h-4" />
+                ) : (
+                  <EyeIconLucide className="w-4 h-4" />
+                )}
                 Indicators
               </button>
 

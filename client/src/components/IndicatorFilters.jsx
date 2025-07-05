@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from "react"
 import axios from "axios"
+import {
+  Activity,
+  TrendingUp,
+  BarChart3,
+  Target,
+  Volume2,
+  Crosshair,
+  RefreshCw,
+  Loader2,
+  CheckCircle,
+  Circle,
+} from "lucide-react"
 
 function IndicatorFilters({ symbol, interval, onIndicatorSelect }) {
   const [indicators, setIndicators] = useState({})
@@ -10,23 +22,77 @@ function IndicatorFilters({ symbol, interval, onIndicatorSelect }) {
 
   // Available indicators list
   const availableIndicators = [
-    { id: "RSI", name: "RSI", description: "Relative Strength Index", category: "oscillator" },
-    { id: "MACD", name: "MACD", description: "Moving Average Convergence Divergence", category: "trend" },
-    { id: "BB", name: "Bollinger Bands", description: "Bollinger Bands", category: "volatility" },
-    { id: "SMA20", name: "SMA 20", description: "Simple Moving Average 20", category: "trend" },
-    { id: "SMA50", name: "SMA 50", description: "Simple Moving Average 50", category: "trend" },
-    { id: "EMA12", name: "EMA 12", description: "Exponential Moving Average 12", category: "trend" },
-    { id: "EMA26", name: "EMA 26", description: "Exponential Moving Average 26", category: "trend" },
-    { id: "VWAP", name: "VWAP", description: "Volume Weighted Average Price", category: "volume" },
-    { id: "SUPPORT", name: "Support/Resistance", description: "Key levels", category: "levels" },
+    {
+      id: "RSI",
+      name: "RSI",
+      description: "Relative Strength Index",
+      category: "oscillator",
+      icon: <Activity className="w-4 h-4" />,
+    },
+    {
+      id: "MACD",
+      name: "MACD",
+      description: "Moving Average Convergence Divergence",
+      category: "trend",
+      icon: <BarChart3 className="w-4 h-4" />,
+    },
+    {
+      id: "BB",
+      name: "Bollinger Bands",
+      description: "Bollinger Bands",
+      category: "volatility",
+      icon: <Target className="w-4 h-4" />,
+    },
+    {
+      id: "SMA20",
+      name: "SMA 20",
+      description: "Simple Moving Average 20",
+      category: "trend",
+      icon: <TrendingUp className="w-4 h-4" />,
+    },
+    {
+      id: "SMA50",
+      name: "SMA 50",
+      description: "Simple Moving Average 50",
+      category: "trend",
+      icon: <TrendingUp className="w-4 h-4" />,
+    },
+    {
+      id: "EMA12",
+      name: "EMA 12",
+      description: "Exponential Moving Average 12",
+      category: "trend",
+      icon: <TrendingUp className="w-4 h-4" />,
+    },
+    {
+      id: "EMA26",
+      name: "EMA 26",
+      description: "Exponential Moving Average 26",
+      category: "trend",
+      icon: <TrendingUp className="w-4 h-4" />,
+    },
+    {
+      id: "VWAP",
+      name: "VWAP",
+      description: "Volume Weighted Average Price",
+      category: "volume",
+      icon: <Volume2 className="w-4 h-4" />,
+    },
+    {
+      id: "SUPPORT",
+      name: "Support/Resistance",
+      description: "Key levels",
+      category: "levels",
+      icon: <Crosshair className="w-4 h-4" />,
+    },
   ]
 
   const categories = {
-    trend: { name: "Trend", icon: "📈", color: "#02c076" },
-    oscillator: { name: "Oscillators", icon: "〰️", color: "#f0b90b" },
-    volatility: { name: "Volatility", icon: "📊", color: "#f84960" },
-    volume: { name: "Volume", icon: "📦", color: "#02c076" },
-    levels: { name: "Levels", icon: "🎯", color: "#f84960" },
+    trend: { name: "Trend", icon: <TrendingUp className="w-4 h-4" />, color: "#02c076" },
+    oscillator: { name: "Oscillators", icon: <Activity className="w-4 h-4" />, color: "#f0b90b" },
+    volatility: { name: "Volatility", icon: <BarChart3 className="w-4 h-4" />, color: "#f84960" },
+    volume: { name: "Volume", icon: <Volume2 className="w-4 h-4" />, color: "#02c076" },
+    levels: { name: "Levels", icon: <Crosshair className="w-4 h-4" />, color: "#f84960" },
   }
 
   const fetchIndicators = async () => {
@@ -113,11 +179,17 @@ function IndicatorFilters({ symbol, interval, onIndicatorSelect }) {
     <div className="bg-[#1e2329] h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-[#2b3139]">
-        <h3 className="font-semibold text-white text-sm">📊 INDICATORS</h3>
         <div className="flex items-center gap-2">
-          {loading && <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#f0b90b]"></div>}
-          <button onClick={fetchIndicators} className="text-[#f0b90b] hover:text-[#f0b90b]/80 text-xs">
-            🔄
+          <BarChart3 className="w-4 h-4 text-[#f0b90b]" />
+          <h3 className="font-semibold text-white text-sm">INDICATORS</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          {loading && <Loader2 className="w-3 h-3 text-[#f0b90b] animate-spin" />}
+          <button
+            onClick={fetchIndicators}
+            className="text-[#f0b90b] hover:text-[#f0b90b]/80 text-xs p-1 rounded hover:bg-[#2b3139] transition-all duration-200"
+          >
+            <RefreshCw className="w-3 h-3" />
           </button>
         </div>
       </div>
@@ -142,21 +214,40 @@ function IndicatorFilters({ symbol, interval, onIndicatorSelect }) {
                 {categoryIndicators.map((indicator) => (
                   <div
                     key={indicator.id}
-                    className={`px-3 py-2 hover:bg-[#2b3139]/50 cursor-pointer transition-colors border-l-2 ${
+                    className={`px-3 py-3 hover:bg-[#2b3139]/50 cursor-pointer transition-all duration-200 border-l-2 group ${
                       selectedIndicators.has(indicator.id) ? "border-[#f0b90b] bg-[#2b3139]/30" : "border-transparent"
                     }`}
                     onClick={() => toggleIndicator(indicator.id)}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <div
-                          className={`w-2 h-2 rounded border transition-colors ${
-                            selectedIndicators.has(indicator.id) ? "bg-[#f0b90b] border-[#f0b90b]" : "border-[#848e9c]"
+                          className={`transition-all duration-200 ${
+                            selectedIndicators.has(indicator.id)
+                              ? "text-[#f0b90b]"
+                              : "text-[#848e9c] group-hover:text-white"
                           }`}
-                        ></div>
-                        <div>
-                          <div className="font-medium text-white text-xs">{indicator.name}</div>
-                          <div className="text-xs text-[#848e9c]/70">{indicator.description}</div>
+                        >
+                          {selectedIndicators.has(indicator.id) ? (
+                            <CheckCircle className="w-4 h-4" />
+                          ) : (
+                            <Circle className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`transition-colors duration-200 ${
+                              selectedIndicators.has(indicator.id)
+                                ? "text-[#f0b90b]"
+                                : "text-[#848e9c] group-hover:text-white"
+                            }`}
+                          >
+                            {indicator.icon}
+                          </div>
+                          <div>
+                            <div className="font-medium text-white text-xs">{indicator.name}</div>
+                            <div className="text-xs text-[#848e9c]/70">{indicator.description}</div>
+                          </div>
                         </div>
                       </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import axios from "axios"
+import { Activity, BarChart3, Loader2, AlertCircle, CheckCircle, XCircle } from "lucide-react"
 
 function TechnicalIndicators({ symbol, interval = "1h" }) {
   const [indicators, setIndicators] = useState(null)
@@ -30,7 +31,7 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#f0b90b]"></div>
+          <Loader2 className="w-6 h-6 text-[#f0b90b] animate-spin" />
           <span className="text-[#848e9c]">Loading technical indicators...</span>
         </div>
       </div>
@@ -41,7 +42,7 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl mb-4">📊</div>
+          <BarChart3 className="w-16 h-16 text-[#848e9c] mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No Indicator Data</h3>
           <p className="text-[#848e9c]">
             No indicator data available for {symbol} {interval}
@@ -92,17 +93,36 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
   return (
     <div className="h-full overflow-auto">
       <div className="p-6">
-        <h3 className="text-xl font-bold mb-6 text-white">
-          📊 Technical Indicators - {symbol} {interval.toUpperCase()}
+        <h3 className="text-xl font-bold mb-6 text-white flex items-center gap-3">
+          <BarChart3 className="w-6 h-6 text-[#f0b90b]" />
+          Technical Indicators - {symbol} {interval.toUpperCase()}
         </h3>
 
         {/* Key Metrics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {/* RSI */}
-          <div className="trading-panel p-4">
-            <div className="text-sm text-[#848e9c] mb-2">RSI (14)</div>
-            <div className={`text-xl font-bold px-3 py-2 rounded ${getRSIColor(currentRSI)}`}>
-              {currentRSI !== null ? currentRSI.toFixed(1) : "N/A"}
+          <div className="trading-panel p-4 hover:bg-[#2b3139]/30 transition-all duration-200 group">
+            <div className="flex items-center gap-2 text-sm text-[#848e9c] mb-2">
+              <Activity className="w-4 h-4" />
+              <span>RSI (14)</span>
+            </div>
+            <div
+              className={`text-xl font-bold px-3 py-2 rounded-lg flex items-center gap-2 group-hover:scale-105 transition-transform duration-200 ${getRSIColor(currentRSI)}`}
+            >
+              {currentRSI !== null ? (
+                <>
+                  {currentRSI > 70 ? (
+                    <XCircle className="w-5 h-5" />
+                  ) : currentRSI < 30 ? (
+                    <CheckCircle className="w-5 h-5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5" />
+                  )}
+                  {currentRSI.toFixed(1)}
+                </>
+              ) : (
+                "N/A"
+              )}
             </div>
             <div className="text-xs text-[#848e9c] mt-2">
               {currentRSI !== null

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import axios from "axios"
+import { Target, TrendingUp, TrendingDown, Activity, Zap, BarChart3, DollarSign, Flame, Clock } from "lucide-react"
 
 function SignalDashboard() {
   const [allSignals, setAllSignals] = useState({ bullish: [], bearish: [], total: 0 })
@@ -78,11 +79,25 @@ function SignalDashboard() {
       <div className="bg-[#1e2329] border-b border-[#2b3139] p-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-white">🎯 Trading Signals</h2>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Target className="w-6 h-6 text-[#f0b90b]" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#02c076] rounded-full animate-pulse"></div>
+              </div>
+              <h2 className="text-xl font-bold text-white">Trading Signals</h2>
+            </div>
             {allSignals.isQuick && (
-              <span className="bg-[#02c076] text-white px-2 py-1 rounded text-xs font-medium">⚡ Quick Mode</span>
+              <div className="flex items-center gap-2 bg-[#02c076] text-white px-3 py-1 rounded-full text-xs font-medium">
+                <Zap className="w-3 h-3" />
+                Quick Mode
+              </div>
             )}
-            {lastUpdate && <span className="text-xs text-[#848e9c]">Last: {lastUpdate.toLocaleTimeString()}</span>}
+            {lastUpdate && (
+              <div className="flex items-center gap-2 text-xs text-[#848e9c]">
+                <Clock className="w-3 h-3" />
+                {lastUpdate.toLocaleTimeString()}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -124,53 +139,79 @@ function SignalDashboard() {
       {/* Signal Stats */}
       <div className="px-4 pb-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="trading-panel p-4">
+          <div className="trading-panel p-4 hover:bg-[#2b3139]/30 transition-all duration-200 group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#02c076]">Bullish Signals</p>
-                <p className="text-2xl font-bold text-[#02c076]">{filteredBullishSignals.length}</p>
+                <p className="text-sm text-[#02c076] flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Bullish Signals
+                </p>
+                <p className="text-2xl font-bold text-[#02c076] group-hover:scale-110 transition-transform duration-200">
+                  {filteredBullishSignals.length}
+                </p>
                 {allSignals.bullish.length !== filteredBullishSignals.length && (
                   <p className="text-xs text-[#848e9c]">({allSignals.bullish.length} total)</p>
                 )}
               </div>
-              <div className="text-3xl">📈</div>
+              <div className="text-3xl group-hover:rotate-12 transition-transform duration-200">
+                <TrendingUp className="w-8 h-8 text-[#02c076]" />
+              </div>
             </div>
           </div>
 
-          <div className="trading-panel p-4">
+          <div className="trading-panel p-4 hover:bg-[#2b3139]/30 transition-all duration-200 group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#f84960]">Bearish Signals</p>
-                <p className="text-2xl font-bold text-[#f84960]">{filteredBearishSignals.length}</p>
+                <p className="text-sm text-[#f84960] flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4" />
+                  Bearish Signals
+                </p>
+                <p className="text-2xl font-bold text-[#f84960] group-hover:scale-110 transition-transform duration-200">
+                  {filteredBearishSignals.length}
+                </p>
                 {allSignals.bearish.length !== filteredBearishSignals.length && (
                   <p className="text-xs text-[#848e9c]">({allSignals.bearish.length} total)</p>
                 )}
               </div>
-              <div className="text-3xl">📉</div>
+              <div className="text-3xl group-hover:rotate-12 transition-transform duration-200">
+                <TrendingDown className="w-8 h-8 text-[#f84960]" />
+              </div>
             </div>
           </div>
 
-          <div className="trading-panel p-4">
+          <div className="trading-panel p-4 hover:bg-[#2b3139]/30 transition-all duration-200 group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#f0b90b]">Total Signals</p>
-                <p className="text-2xl font-bold text-[#f0b90b]">{allSignals.total}</p>
+                <p className="text-sm text-[#f0b90b] flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Total Signals
+                </p>
+                <p className="text-2xl font-bold text-[#f0b90b] group-hover:scale-110 transition-transform duration-200">
+                  {allSignals.total}
+                </p>
                 <p className="text-xs text-[#848e9c]">Timeframes: {allSignals.intervals?.join(", ") || "N/A"}</p>
               </div>
-              <div className="text-3xl">🎯</div>
+              <div className="text-3xl group-hover:rotate-12 transition-transform duration-200">
+                <Target className="w-8 h-8 text-[#f0b90b]" />
+              </div>
             </div>
           </div>
 
-          <div className="trading-panel p-4">
+          <div className="trading-panel p-4 hover:bg-[#2b3139]/30 transition-all duration-200 group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#f0b90b]">High Strength</p>
-                <p className="text-2xl font-bold text-[#f0b90b]">
+                <p className="text-sm text-[#f0b90b] flex items-center gap-2">
+                  <Flame className="w-4 h-4" />
+                  High Strength
+                </p>
+                <p className="text-2xl font-bold text-[#f0b90b] group-hover:scale-110 transition-transform duration-200">
                   {[...filteredBullishSignals, ...filteredBearishSignals].filter((s) => s.strength >= 70).length}
                 </p>
                 <p className="text-xs text-[#848e9c]">≥ 70% strength</p>
               </div>
-              <div className="text-3xl">🔥</div>
+              <div className="text-3xl group-hover:rotate-12 transition-transform duration-200">
+                <Flame className="w-8 h-8 text-[#f0b90b]" />
+              </div>
             </div>
           </div>
         </div>
@@ -202,7 +243,7 @@ function SignalDashboard() {
                 {filteredBullishSignals.length > 0 ? (
                   filteredBullishSignals
                     .slice(0, 10)
-                    .map((signal, index) => <SignalCard key={`bullish-${index}`} signal={signal} />)
+                    .map((signal, index) => <SignalCard key={`bullish-${index}`} signal={signal} rank={index + 1} />)
                 ) : (
                   <div className="trading-panel p-4 text-center">
                     <p className="text-[#848e9c]">No bullish signals above {filters.minStrength}% strength</p>
@@ -220,7 +261,7 @@ function SignalDashboard() {
                 {filteredBearishSignals.length > 0 ? (
                   filteredBearishSignals
                     .slice(0, 10)
-                    .map((signal, index) => <SignalCard key={`bearish-${index}`} signal={signal} />)
+                    .map((signal, index) => <SignalCard key={`bearish-${index}`} signal={signal} rank={index + 1} />)
                 ) : (
                   <div className="trading-panel p-4 text-center">
                     <p className="text-[#848e9c]">No bearish signals above {filters.minStrength}% strength</p>
@@ -305,6 +346,30 @@ function SignalFilters({ filters, onChange }) {
 }
 
 function SignalCard({ signal, rank }) {
+  const getSignalIcon = (signal) => {
+    switch (signal.signalType) {
+      case "rsi_oversold_reversal":
+      case "rsi_overbought_reversal":
+      case "rsi_oversold":
+      case "rsi_overbought":
+        return <Activity className="w-4 h-4" />
+      case "macd_bullish_crossover":
+      case "macd_bearish_crossover":
+        return <BarChart3 className="w-4 h-4" />
+      case "bb_oversold":
+      case "bb_overbought":
+        return <Target className="w-4 h-4" />
+      case "golden_cross":
+      case "death_cross":
+        return <Zap className="w-4 h-4" />
+      case "extreme_funding_bullish":
+      case "extreme_funding_bearish":
+        return <DollarSign className="w-4 h-4" />
+      default:
+        return signal.type === "bullish" ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />
+    }
+  }
+
   const getBorderColor = () => {
     if (signal.strength >= 80) return "border-[#f0b90b]"
     if (signal.type === "bullish") return "border-[#02c076]"
@@ -317,30 +382,6 @@ function SignalCard({ signal, rank }) {
     return "text-[#f84960]"
   }
 
-  const getSignalIcon = () => {
-    switch (signal.signalType) {
-      case "rsi_oversold_reversal":
-      case "rsi_overbought_reversal":
-      case "rsi_oversold":
-      case "rsi_overbought":
-        return "📊"
-      case "macd_bullish_crossover":
-      case "macd_bearish_crossover":
-        return "〰️"
-      case "bb_oversold":
-      case "bb_overbought":
-        return "📏"
-      case "golden_cross":
-      case "death_cross":
-        return "✂️"
-      case "extreme_funding_bullish":
-      case "extreme_funding_bearish":
-        return "💰"
-      default:
-        return signal.type === "bullish" ? "📈" : "📉"
-    }
-  }
-
   const getTimeframeColor = () => {
     if (signal.timeframe === "1m") return "bg-[#f84960]"
     if (signal.timeframe === "5m") return "bg-[#02c076]"
@@ -351,21 +392,31 @@ function SignalCard({ signal, rank }) {
   }
 
   return (
-    <div className={`trading-panel border ${getBorderColor()} relative hover:bg-[#2b3139]/50 transition-colors`}>
+    <div
+      className={`trading-panel border ${getBorderColor()} relative hover:bg-[#2b3139]/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group`}
+    >
       {rank && (
-        <div className="absolute -top-2 -left-2 bg-[#f0b90b] text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+        <div className="absolute -top-2 -left-2 bg-gradient-to-r from-[#f0b90b] to-[#ffd700] text-black rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
           {rank}
         </div>
       )}
 
       <div className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{getSignalIcon()}</span>
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`p-2 rounded-lg transition-all duration-200 group-hover:scale-110 ${
+                signal.type === "bullish" ? "bg-[#02c076]/10" : "bg-[#f84960]/10"
+              }`}
+            >
+              {getSignalIcon(signal)}
+            </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h4 className="font-semibold text-white">{signal.symbol}</h4>
-                <span className={`px-2 py-1 rounded text-xs font-medium text-white ${getTimeframeColor()}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="font-semibold text-white text-lg">{signal.symbol}</h4>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getTimeframeColor()} shadow-sm`}
+                >
                   {signal.timeframe?.toUpperCase() || signal.interval?.toUpperCase()}
                 </span>
               </div>
@@ -374,23 +425,43 @@ function SignalCard({ signal, rank }) {
           </div>
 
           <div className="text-right">
-            <div className={`text-lg font-bold ${getStrengthColor()}`}>{Math.round(signal.strength)}%</div>
-            <div className="text-xs text-[#848e9c]">{new Date(signal.detectedAt).toLocaleTimeString()}</div>
+            <div
+              className={`text-xl font-bold ${getStrengthColor()} group-hover:scale-110 transition-transform duration-200`}
+            >
+              {Math.round(signal.strength)}%
+            </div>
+            <div className="text-xs text-[#848e9c] flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {new Date(signal.detectedAt).toLocaleTimeString()}
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-between items-center text-xs text-[#848e9c]">
-          <span>Price: ${typeof signal.price === "number" ? signal.price.toFixed(2) : "N/A"}</span>
-          <span className="bg-[#2b3139] px-2 py-1 rounded text-[#848e9c]">
+        <div className="flex justify-between items-center text-xs">
+          <div className="flex items-center gap-2 text-[#848e9c]">
+            <DollarSign className="w-3 h-3" />
+            <span>${typeof signal.price === "number" ? signal.price.toFixed(2) : "N/A"}</span>
+          </div>
+          <span className="bg-gradient-to-r from-[#2b3139] to-[#3c434d] px-3 py-1 rounded-full text-[#848e9c] text-xs font-medium">
             {signal.signalType?.replace(/_/g, " ").toUpperCase() || "UNKNOWN"}
           </span>
         </div>
 
-        {/* Additional signal data */}
-        {signal.rsi && <div className="text-xs text-[#848e9c] mt-1">RSI: {signal.rsi.toFixed(1)}</div>}
-        {signal.fundingRate && (
-          <div className="text-xs text-[#848e9c] mt-1">Funding: {(signal.fundingRate * 100).toFixed(3)}%</div>
-        )}
+        {/* Additional signal data with icons */}
+        <div className="mt-3 flex gap-4 text-xs text-[#848e9c]">
+          {signal.rsi && (
+            <div className="flex items-center gap-1">
+              <Activity className="w-3 h-3" />
+              <span>RSI: {signal.rsi.toFixed(1)}</span>
+            </div>
+          )}
+          {signal.fundingRate && (
+            <div className="flex items-center gap-1">
+              <DollarSign className="w-3 h-3" />
+              <span>Funding: {(signal.fundingRate * 100).toFixed(3)}%</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

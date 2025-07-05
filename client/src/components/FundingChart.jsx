@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js"
+import { DollarSign, TrendingUp, TrendingDown } from "lucide-react"
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
@@ -19,7 +20,7 @@ function FundingChart({ data }) {
     return (
       <div className="h-full flex items-center justify-center bg-[#0d1421]">
         <div className="text-center">
-          <div className="text-2xl mb-2">💰</div>
+          <DollarSign className="w-12 h-12 text-[#848e9c] mx-auto mb-2" />
           <p className="text-sm text-[#848e9c]">No funding data</p>
         </div>
       </div>
@@ -101,17 +102,25 @@ function FundingChart({ data }) {
   return (
     <div className="h-full bg-[#0d1421] relative">
       {/* Chart Header */}
-      <div className="absolute top-2 left-2 z-10 bg-[#1e2329]/80 backdrop-blur-sm rounded px-2 py-1 border border-[#2b3139]">
+      <div className="absolute top-2 left-2 z-10 bg-[#1e2329]/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-[#2b3139] shadow-lg">
         <div className="flex items-center gap-2">
-          <span className="text-white text-sm font-medium">💰 Funding Rate</span>
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-[#f0b90b]" />
+            <span className="text-white text-sm font-medium">Funding Rate</span>
+          </div>
           {currentFunding && (
-            <span
-              className={`text-xs px-1 py-0.5 rounded ${
+            <div
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
                 currentFunding.fundingRate > 0 ? "text-[#f84960] bg-[#f84960]/10" : "text-[#02c076] bg-[#02c076]/10"
               }`}
             >
-              {(currentFunding.fundingRate * 100).toFixed(4)}%
-            </span>
+              {currentFunding.fundingRate > 0 ? (
+                <TrendingUp className="w-3 h-3" />
+              ) : (
+                <TrendingDown className="w-3 h-3" />
+              )}
+              <span>{(currentFunding.fundingRate * 100).toFixed(4)}%</span>
+            </div>
           )}
         </div>
       </div>
