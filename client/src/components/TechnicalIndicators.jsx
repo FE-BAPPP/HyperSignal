@@ -28,10 +28,10 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#0d1421]">
+      <div className="h-full flex items-center justify-center">
         <div className="flex items-center gap-3">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#f0b90b]"></div>
-          <span className="text-[#848e9c]">Loading indicators...</span>
+          <span className="text-[#848e9c]">Loading technical indicators...</span>
         </div>
       </div>
     )
@@ -39,11 +39,11 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
 
   if (!indicators) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#0d1421]">
+      <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">📊</div>
           <h3 className="text-lg font-medium text-white mb-2">No Indicator Data</h3>
-          <p className="text-sm text-[#848e9c]">
+          <p className="text-[#848e9c]">
             No indicator data available for {symbol} {interval}
           </p>
         </div>
@@ -90,24 +90,21 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
   const priceChange = typeof indicators.priceChange24h === "number" ? indicators.priceChange24h : null
 
   return (
-    <div className="h-full bg-[#0d1421] overflow-auto">
-      {/* Header */}
-      <div className="bg-[#1e2329] border-b border-[#2b3139] p-4">
-        <h3 className="text-lg font-semibold text-white">
+    <div className="h-full overflow-auto">
+      <div className="p-6">
+        <h3 className="text-xl font-bold mb-6 text-white">
           📊 Technical Indicators - {symbol} {interval.toUpperCase()}
         </h3>
-      </div>
 
-      <div className="p-4 space-y-6">
         {/* Key Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {/* RSI */}
           <div className="trading-panel p-4">
             <div className="text-sm text-[#848e9c] mb-2">RSI (14)</div>
-            <div className={`text-lg font-bold px-2 py-1 rounded ${getRSIColor(currentRSI)}`}>
+            <div className={`text-xl font-bold px-3 py-2 rounded ${getRSIColor(currentRSI)}`}>
               {currentRSI !== null ? currentRSI.toFixed(1) : "N/A"}
             </div>
-            <div className="text-xs text-[#848e9c] mt-1">
+            <div className="text-xs text-[#848e9c] mt-2">
               {currentRSI !== null
                 ? currentRSI > 70
                   ? "Overbought"
@@ -122,7 +119,7 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
           <div className="trading-panel p-4">
             <div className="text-sm text-[#848e9c] mb-2">Price vs SMA20</div>
             <div
-              className={`text-lg font-bold ${
+              className={`text-xl font-bold ${
                 currentPrice !== null && sma20 !== null
                   ? currentPrice > sma20
                     ? "text-[#02c076]"
@@ -132,7 +129,7 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
             >
               {currentPrice !== null && sma20 !== null ? (currentPrice > sma20 ? "📈 Above" : "📉 Below") : "N/A"}
             </div>
-            <div className="text-xs text-[#848e9c] mt-1">
+            <div className="text-xs text-[#848e9c] mt-2">
               ${currentPrice !== null ? currentPrice.toFixed(2) : "N/A"} vs ${sma20 !== null ? sma20.toFixed(2) : "N/A"}
             </div>
           </div>
@@ -142,10 +139,10 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
             <div className="text-sm text-[#848e9c] mb-2">MACD Signal</div>
             {hasMacdHistogram ? (
               <>
-                <div className={`text-lg font-bold ${lastMacdHistogram > 0 ? "text-[#02c076]" : "text-[#f84960]"}`}>
+                <div className={`text-xl font-bold ${lastMacdHistogram > 0 ? "text-[#02c076]" : "text-[#f84960]"}`}>
                   {lastMacdHistogram > 0 ? "📈 Bullish" : "📉 Bearish"}
                 </div>
-                <div className="text-xs text-[#848e9c] mt-1">
+                <div className="text-xs text-[#848e9c] mt-2">
                   Histogram: {lastMacdHistogram !== null ? lastMacdHistogram.toFixed(4) : "N/A"}
                 </div>
               </>
@@ -157,7 +154,7 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
           {/* Bollinger Position */}
           <div className="trading-panel p-4">
             <div className="text-sm text-[#848e9c] mb-2">Bollinger Position</div>
-            <div className="text-lg font-bold">
+            <div className="text-xl font-bold">
               {currentPrice !== null && bbUpper !== null && bbLower !== null
                 ? currentPrice > bbUpper
                   ? "🔴 Above Upper"
@@ -166,7 +163,7 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
                     : "🟡 Middle"
                 : "N/A"}
             </div>
-            <div className="text-xs text-[#848e9c] mt-1">
+            <div className="text-xs text-[#848e9c] mt-2">
               Range: ${bbLower !== null ? bbLower.toFixed(2) : "N/A"} - ${bbUpper !== null ? bbUpper.toFixed(2) : "N/A"}
             </div>
           </div>
@@ -176,7 +173,7 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Moving Averages */}
           <div className="trading-panel p-4">
-            <h4 className="font-semibold mb-3 text-white">📈 Moving Averages</h4>
+            <h4 className="font-semibold mb-4 text-white">📈 Moving Averages</h4>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-[#848e9c]">SMA 20:</span>
@@ -190,17 +187,17 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
                 <span className="text-[#848e9c]">VWAP:</span>
                 <span className="font-medium text-white">{vwap !== null ? `$${vwap.toFixed(2)}` : "N/A"}</span>
               </div>
-              <div className="mt-3 p-3 bg-[#2b3139] rounded">
+              <div className="mt-4 p-3 bg-[#2b3139]/50 rounded">
                 <div className="text-sm">
-                  <strong className="text-white">Trend:</strong>{" "}
+                  <strong className="text-white">Trend:</strong>
                   <span
-                    className={
+                    className={`ml-2 ${
                       sma20 !== null && sma50 !== null
                         ? sma20 > sma50
                           ? "text-[#02c076]"
                           : "text-[#f84960]"
                         : "text-[#848e9c]"
-                    }
+                    }`}
                   >
                     {sma20 !== null && sma50 !== null
                       ? sma20 > sma50
@@ -215,7 +212,7 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
 
           {/* Support & Resistance */}
           <div className="trading-panel p-4">
-            <h4 className="font-semibold mb-3 text-white">🎯 Support & Resistance</h4>
+            <h4 className="font-semibold mb-4 text-white">🎯 Support & Resistance</h4>
             <div className="space-y-4">
               <div>
                 <div className="text-sm text-[#848e9c] mb-2">Key Supports:</div>
@@ -253,11 +250,11 @@ function TechnicalIndicators({ symbol, interval = "1h" }) {
         </div>
 
         {/* Price Change Info */}
-        <div className="trading-panel p-4">
+        <div className="mt-6 trading-panel p-4">
           <div className="flex justify-between items-center">
             <span className="text-[#848e9c]">24h Change:</span>
             <span
-              className={`font-medium ${
+              className={`font-medium text-lg ${
                 priceChange !== null && priceChange >= 0 ? "text-[#02c076]" : "text-[#f84960]"
               }`}
             >

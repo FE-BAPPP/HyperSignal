@@ -26,7 +26,7 @@ function OIChart({ data }) {
     )
   }
 
-  // Check if data has valid oi field
+  // Check if data has valid OI field
   const hasValidOI = data.some((item) => item && typeof item.oi !== "undefined" && item.oi !== null)
 
   if (!hasValidOI) {
@@ -35,7 +35,7 @@ function OIChart({ data }) {
         <div className="text-center">
           <div className="text-2xl mb-2">⚠️</div>
           <p className="text-sm text-[#f84960]">Invalid OI data</p>
-          <p className="text-xs text-[#848e9c]">Missing 'oi' field</p>
+          <p className="text-xs text-[#848e9c]">Records: {data.length}</p>
         </div>
       </div>
     )
@@ -56,8 +56,8 @@ function OIChart({ data }) {
       {
         label: "Open Interest",
         data: sortedData.map((item) => Number.parseFloat(item.oi) || 0),
-        borderColor: "#02c076",
-        backgroundColor: "rgba(2, 192, 118, 0.1)",
+        borderColor: "#a855f7",
+        backgroundColor: "rgba(168, 85, 247, 0.1)",
         fill: true,
         tension: 0.4,
         pointRadius: 0,
@@ -125,7 +125,7 @@ function OIChart({ data }) {
         <div className="flex items-center gap-2">
           <span className="text-white text-sm font-medium">📈 Open Interest</span>
           {currentOI && currentOI.oi !== undefined && (
-            <span className="text-xs text-[#02c076] bg-[#02c076]/10 px-1 py-0.5 rounded">
+            <span className="text-xs text-[#a855f7] bg-[#a855f7]/10 px-1 py-0.5 rounded">
               {Number.parseFloat(currentOI.oi).toLocaleString()}
             </span>
           )}

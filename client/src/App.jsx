@@ -10,12 +10,16 @@ import {
   ArrowTrendingDownIcon,
   Bars3Icon,
   XMarkIcon,
+  Cog6ToothIcon,
+  EyeIcon,
+  EyeSlashIcon,
 } from "@heroicons/react/24/outline"
 import CandleChart from "./components/CandleChart"
 import FundingChart from "./components/FundingChart"
 import OIChart from "./components/OIChart"
 import SignalDashboard from "./components/SignalDashboard"
 import TechnicalIndicators from "./components/TechnicalIndicators"
+import IndicatorFilters from "./components/IndicatorFilters"
 
 function App() {
   const [symbol, setSymbol] = useState("ETH")
@@ -31,6 +35,8 @@ function App() {
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [activeTab, setActiveTab] = useState("chart")
   const [selectedIndicators, setSelectedIndicators] = useState(new Set(["RSI", "MACD", "BB"]))
+  const [indicatorData, setIndicatorData] = useState(null)
+  const [showIndicatorOverlay, setShowIndicatorOverlay] = useState(false)
 
   // Market data for ticker
   const [marketData, setMarketData] = useState({
@@ -104,6 +110,16 @@ function App() {
     setLoading(false)
   }
 
+  const fetchIndicators = async () => {
+    try {
+      const res = await axios.get(`http://localhost:4000/api/indicators/${symbol}?interval=${timeframe}`)
+      setIndicatorData(res.data)
+    } catch (err) {
+      console.error("❌ Error fetching indicators:", err)
+      setIndicatorData(null)
+    }
+  }
+
   const triggerAggregation = async () => {
     setLoading(true)
     toast.loading("Aggregating data...", { id: "aggregation" })
@@ -114,6 +130,7 @@ function App() {
 
       setTimeout(() => {
         fetchData()
+        fetchIndicators()
         setLoading(false)
       }, 10000)
     } catch (err) {
@@ -123,11 +140,18 @@ function App() {
     }
   }
 
+  const handleIndicatorSelect = (indicators, selected) => {
+    setSelectedIndicators(selected)
+    setIndicatorData(indicators)
+  }
+
   useEffect(() => {
     fetchData()
+    fetchIndicators()
 
     const intervalId = setInterval(() => {
       fetchData()
+      fetchIndicators()
     }, 30000)
 
     return () => clearInterval(intervalId)
@@ -220,18 +244,29 @@ function App() {
 
       {/* Main Trading Interface */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Watchlist */}
+        {/* Left Sidebar - Watchlist & Indicators */}
         <AnimatePresence>
           {leftSidebarOpen && (
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: 280 }}
+              animate={{ width: 320 }}
               exit={{ width: 0 }}
               className="bg-[#1e2329] border-r border-[#2b3139] flex flex-col overflow-hidden"
             >
               {/* Sidebar Header */}
               <div className="h-10 border-b border-[#2b3139] flex items-center justify-between px-3">
-                <span className="text-sm font-medium text-[#848e9c]">WATCHLIST</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-[#848e9c]">WATCHLIST</span>
+                  <button
+                    onClick={() => setShowIndicatorOverlay(!showIndicatorOverlay)}
+                    className={`p-1 rounded text-xs ${
+                      showIndicatorOverlay ? "bg-[#f0b90b] text-black" : "text-[#848e9c] hover:text-white"
+                    }`}
+                    title="Toggle Indicators"
+                  >
+                    <Cog6ToothIcon className="w-4 h-4" />
+                  </button>
+                </div>
                 <button onClick={() => setLeftSidebarOpen(false)} className="text-[#848e9c] hover:text-white">
                   <XMarkIcon className="w-4 h-4" />
                 </button>
@@ -239,37 +274,112 @@ function App() {
 
               {/* Symbol List */}
               <div className="flex-1 overflow-y-auto">
-                {symbols.map((sym) => (
-                  <div
-                    key={sym.value}
-                    onClick={() => setSymbol(sym.value)}
-                    className={`flex items-center justify-between p-3 cursor-pointer hover:bg-[#2b3139] border-b border-[#2b3139]/50 ${
-                      symbol === sym.value ? "bg-[#2b3139]" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{sym.icon}</span>
-                      <div>
-                        <div className="text-white font-medium">{sym.label}</div>
-                        <div className="text-xs text-[#848e9c]">Perpetual</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-white font-medium">
-                        ${symbol === sym.value ? marketData.price?.toFixed(2) : "0.00"}
-                      </div>
+                {!showIndicatorOverlay ? (
+                  <>
+                    {symbols.map((sym) => (
                       <div
-                        className={`text-xs ${
-                          symbol === sym.value && marketData.changePercent24h >= 0 ? "text-[#02c076]" : "text-[#f84960]"
+                        key={sym.value}
+                        onClick={() => setSymbol(sym.value)}
+                        className={`flex items-center justify-between p-3 cursor-pointer hover:bg-[#2b3139] border-b border-[#2b3139]/50 ${
+                          symbol === sym.value ? "bg-[#2b3139]" : ""
                         }`}
                       >
-                        {symbol === sym.value
-                          ? `${marketData.changePercent24h >= 0 ? "+" : ""}${marketData.changePercent24h?.toFixed(2)}%`
-                          : "0.00%"}
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{sym.icon}</span>
+                          <div>
+                            <div className="text-white font-medium">{sym.label}</div>
+                            <div className="text-xs text-[#848e9c]">Perpetual</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white font-medium">
+                            ${symbol === sym.value ? marketData.price?.toFixed(2) : "0.00"}
+                          </div>
+                          <div
+                            className={`text-xs ${
+                              symbol === sym.value && marketData.changePercent24h >= 0
+                                ? "text-[#02c076]"
+                                : "text-[#f84960]"
+                            }`}
+                          >
+                            {symbol === sym.value
+                              ? `${marketData.changePercent24h >= 0 ? "+" : ""}${marketData.changePercent24h?.toFixed(2)}%`
+                              : "0.00%"}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
+
+                    {/* Quick Indicators Summary */}
+                    {indicatorData && (
+                      <div className="p-3 border-t border-[#2b3139]">
+                        <div className="text-xs text-[#848e9c] mb-2">QUICK INDICATORS</div>
+                        <div className="space-y-2">
+                          {/* RSI */}
+                          {indicatorData.rsi && indicatorData.rsi.length > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-[#848e9c]">RSI</span>
+                              <span
+                                className={`text-sm font-medium ${
+                                  indicatorData.rsi[indicatorData.rsi.length - 1] > 70
+                                    ? "text-[#f84960]"
+                                    : indicatorData.rsi[indicatorData.rsi.length - 1] < 30
+                                      ? "text-[#02c076]"
+                                      : "text-white"
+                                }`}
+                              >
+                                {indicatorData.rsi[indicatorData.rsi.length - 1].toFixed(1)}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* MACD */}
+                          {indicatorData.macd &&
+                            indicatorData.macd.histogram &&
+                            indicatorData.macd.histogram.length > 0 && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-[#848e9c]">MACD</span>
+                                <span
+                                  className={`text-sm font-medium ${
+                                    indicatorData.macd.histogram[indicatorData.macd.histogram.length - 1] > 0
+                                      ? "text-[#02c076]"
+                                      : "text-[#f84960]"
+                                  }`}
+                                >
+                                  {indicatorData.macd.histogram[indicatorData.macd.histogram.length - 1] > 0
+                                    ? "↗"
+                                    : "↘"}
+                                </span>
+                              </div>
+                            )}
+
+                          {/* Price vs SMA20 */}
+                          {indicatorData.currentPrice && indicatorData.sma20 && indicatorData.sma20.length > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-[#848e9c]">vs SMA20</span>
+                              <span
+                                className={`text-sm font-medium ${
+                                  indicatorData.currentPrice > indicatorData.sma20[indicatorData.sma20.length - 1]
+                                    ? "text-[#02c076]"
+                                    : "text-[#f84960]"
+                                }`}
+                              >
+                                {indicatorData.currentPrice > indicatorData.sma20[indicatorData.sma20.length - 1]
+                                  ? "Above"
+                                  : "Below"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* Indicator Filters */
+                  <div className="h-full">
+                    <IndicatorFilters symbol={symbol} interval={timeframe} onIndicatorSelect={handleIndicatorSelect} />
                   </div>
-                ))}
+                )}
               </div>
 
               {/* Timeframe Selector */}
@@ -321,6 +431,23 @@ function App() {
               ))}
             </div>
 
+            {/* Chart Controls */}
+            <div className="flex items-center gap-2 ml-4">
+              <button
+                onClick={() => setShowIndicatorOverlay(!showIndicatorOverlay)}
+                className={`flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                  showIndicatorOverlay
+                    ? "bg-[#f0b90b] text-black"
+                    : "text-[#848e9c] hover:text-white hover:bg-[#2b3139]"
+                }`}
+              >
+                {showIndicatorOverlay ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                Indicators
+              </button>
+
+              <div className="text-xs text-[#848e9c]">Selected: {selectedIndicators.size}</div>
+            </div>
+
             <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={() => setRightPanelOpen(!rightPanelOpen)}
@@ -332,10 +459,16 @@ function App() {
           </div>
 
           {/* Chart Content */}
-          <div className="flex-1 bg-[#0d1421] overflow-hidden">
+          <div className="flex-1 bg-[#0d1421] overflow-hidden relative">
             {activeTab === "chart" && (
               <div className="h-full p-4">
-                <CandleChart data={candles} symbol={symbol} interval={timeframe} />
+                <CandleChart
+                  data={candles}
+                  symbol={symbol}
+                  interval={timeframe}
+                  indicators={indicatorData}
+                  selectedIndicators={selectedIndicators}
+                />
               </div>
             )}
 
@@ -348,6 +481,32 @@ function App() {
             {activeTab === "indicators" && (
               <div className="h-full overflow-auto p-4">
                 <TechnicalIndicators symbol={symbol} interval={timeframe} />
+              </div>
+            )}
+
+            {/* Indicator Overlay on Chart */}
+            {activeTab === "chart" && indicatorData && selectedIndicators.size > 0 && (
+              <div className="absolute top-4 right-4 z-10 bg-[#1e2329]/90 backdrop-blur-sm rounded p-3 border border-[#2b3139] max-w-xs">
+                <div className="text-xs text-[#848e9c] mb-2">ACTIVE INDICATORS</div>
+                <div className="space-y-1">
+                  {Array.from(selectedIndicators).map((indicator) => (
+                    <div key={indicator} className="flex justify-between items-center text-xs">
+                      <span className="text-[#848e9c]">{indicator}</span>
+                      <span className="text-white font-medium">
+                        {indicator === "RSI" && indicatorData.rsi && indicatorData.rsi.length > 0
+                          ? indicatorData.rsi[indicatorData.rsi.length - 1].toFixed(1)
+                          : indicator === "MACD" &&
+                              indicatorData.macd &&
+                              indicatorData.macd.histogram &&
+                              indicatorData.macd.histogram.length > 0
+                            ? indicatorData.macd.histogram[indicatorData.macd.histogram.length - 1] > 0
+                              ? "↗"
+                              : "↘"
+                            : "●"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -394,10 +553,32 @@ function App() {
                 </div>
 
                 {/* Open Interest */}
-                <div className="p-3">
+                <div className="p-3 border-b border-[#2b3139]">
                   <div className="text-xs text-[#848e9c] mb-2">OPEN INTEREST</div>
                   <div className="h-32">
                     <OIChart data={oi} />
+                  </div>
+                </div>
+
+                {/* Market Summary */}
+                <div className="p-3">
+                  <div className="text-xs text-[#848e9c] mb-2">MARKET SUMMARY</div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#848e9c]">24h Change</span>
+                      <span className={marketData.changePercent24h >= 0 ? "text-[#02c076]" : "text-[#f84960]"}>
+                        {marketData.changePercent24h >= 0 ? "+" : ""}
+                        {marketData.changePercent24h?.toFixed(2)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#848e9c]">24h Volume</span>
+                      <span className="text-white">{marketData.volume24h?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#848e9c]">Last Update</span>
+                      <span className="text-white">{lastUpdate?.toLocaleTimeString()}</span>
+                    </div>
                   </div>
                 </div>
               </div>
