@@ -1,4 +1,4 @@
-import { Line } from "react-chartjs-2";
+import { Line } from "react-chartjs-2"
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -8,104 +8,117 @@ import {
   Title,
   Tooltip,
   Legend,
-} from "chart.js";
+} from "chart.js"
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
 function FundingChart({ data }) {
-  console.log("📊 FundingChart received data:", data);
+  console.log("📊 FundingChart received data:", data)
 
   if (!data || data.length === 0) {
     return (
-      <div className="mt-6 p-4 border rounded bg-gray-50">
-        <h3 className="font-semibold text-gray-600">💰 Funding Rate</h3>
-        <p className="text-sm text-gray-500 mt-2">Không có dữ liệu funding rate</p>
-        <p className="text-xs text-gray-400">Data length: {data ? data.length : 'null'}</p>
+      <div className="h-full flex items-center justify-center bg-[#0d1421]">
+        <div className="text-center">
+          <div className="text-2xl mb-2">💰</div>
+          <p className="text-sm text-[#848e9c]">No funding data</p>
+        </div>
       </div>
-    );
+    )
   }
 
-  const sortedData = data.sort((a, b) => new Date(a.time || a.createdAt) - new Date(b.time || b.createdAt));
+  const sortedData = data.sort((a, b) => new Date(a.time || a.createdAt) - new Date(b.time || b.createdAt))
 
   const chartData = {
-    labels: sortedData.map(item => 
-      new Date(item.time || item.createdAt).toLocaleTimeString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+    labels: sortedData.map((item) =>
+      new Date(item.time || item.createdAt).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     ),
     datasets: [
       {
         label: "Funding Rate (%)",
-        data: sortedData.map(item => (item.fundingRate * 100).toFixed(4)),
-        borderColor: "rgb(34, 197, 94)",
-        backgroundColor: "rgba(34, 197, 94, 0.1)",
+        data: sortedData.map((item) => (item.fundingRate * 100).toFixed(4)),
+        borderColor: "#f0b90b",
+        backgroundColor: "rgba(240, 185, 11, 0.1)",
         fill: true,
-        tension: 0.1,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        borderWidth: 2,
       },
     ],
-  };
+  }
 
   const options = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      title: {
-        display: true,
-        text: "💰 Funding Rate History",
+      legend: {
+        display: false,
       },
       tooltip: {
+        backgroundColor: "#1e2329",
+        titleColor: "#ffffff",
+        bodyColor: "#ffffff",
+        borderColor: "#2b3139",
+        borderWidth: 1,
         callbacks: {
-          label: function(context) {
-            return `Funding Rate: ${context.parsed.y}%`;
-          }
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: false,
-        ticks: {
-          callback: function(value) {
-            return value + '%';
-          }
-        }
+          label: (context) => `Funding Rate: ${context.parsed.y}%`,
+        },
       },
     },
-  };
+    scales: {
+      x: {
+        grid: {
+          color: "#2b3139",
+          drawBorder: false,
+        },
+        ticks: {
+          color: "#848e9c",
+          maxTicksLimit: 6,
+        },
+      },
+      y: {
+        grid: {
+          color: "#2b3139",
+          drawBorder: false,
+        },
+        ticks: {
+          color: "#848e9c",
+          callback: (value) => value + "%",
+        },
+      },
+    },
+    interaction: {
+      intersect: false,
+      mode: "index",
+    },
+  }
 
-  const currentFunding = sortedData[sortedData.length - 1];
+  const currentFunding = sortedData[sortedData.length - 1]
 
   return (
-    <div className="mt-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">💰 Funding Rate ({data.length} records)</h3>
-        {currentFunding && (
-          <div className="flex gap-4 text-sm">
-            <span className={`px-2 py-1 rounded ${
-              currentFunding.fundingRate > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-            }`}>
-              Current: {(currentFunding.fundingRate * 100).toFixed(4)}%
+    <div className="h-full bg-[#0d1421] relative">
+      {/* Chart Header */}
+      <div className="absolute top-2 left-2 z-10 bg-[#1e2329]/80 backdrop-blur-sm rounded px-2 py-1 border border-[#2b3139]">
+        <div className="flex items-center gap-2">
+          <span className="text-white text-sm font-medium">💰 Funding Rate</span>
+          {currentFunding && (
+            <span
+              className={`text-xs px-1 py-0.5 rounded ${
+                currentFunding.fundingRate > 0 ? "text-[#f84960] bg-[#f84960]/10" : "text-[#02c076] bg-[#02c076]/10"
+              }`}
+            >
+              {(currentFunding.fundingRate * 100).toFixed(4)}%
             </span>
-            <span className="text-gray-600">
-              Updated: {new Date(currentFunding.time || currentFunding.createdAt).toLocaleTimeString()}
-            </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-      <div style={{ height: "300px" }}>
-        <Line data={chartData} options={options} />
-      </div>
+
+      <Line data={chartData} options={options} />
     </div>
-  );
+  )
 }
 
-export default FundingChart;
+export default FundingChart
