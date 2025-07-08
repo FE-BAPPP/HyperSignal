@@ -13,6 +13,104 @@ class CandleAggregator {
     };
   }
 
+  // THÊM STATIC METHOD này để backend có thể gọi
+  static async aggregateCandles(symbol) {
+    try {
+      console.log(`🔄 Starting aggregation for ${symbol}...`);
+      
+      const aggregator = new CandleAggregator();
+      
+      // Check if we have 1m candles
+      const oneMinCandles = await Candle.find({ 
+        symbol, 
+        interval: '1m' 
+      }).sort({ startTime: -1 }).limit(100);
+      
+      if (oneMinCandles.length === 0) {
+        console.log(`⚠️ No 1m candles found for ${symbol}, trying to create from trades...`);
+        
+        // Tạo candles từ trades nếu cần
+        const Ticker = require('../models/Ticker');
+        const trades = await Ticker.find({ symbol })
+          .sort({ time: -1 })
+          .limit(1000);
+          
+        if (trades.length > 0) {
+          // Group trades into 1m candles
+          const candleMap = new Map();
+          
+          for (const trade of trades) {
+            const minute = new Date(trade.time);
+            minute.setSeconds(0, 0);
+            const key = minute.toISOString();
+            
+            if (!candleMap.has(key)) {
+              candleMap.set(key, {
+                symbol,
+                interval: '1m',
+                startTime: minute,
+                endTime: new Date(minute.getTime() + 60000),
+                open: trade.price,
+                high: trade.price,
+                low: trade.price,
+                close: trade.price,
+                volume: 1,
+                trades: 1
+              });
+            } else {
+              const candle = candleMap.get(key);
+              candle.high = Math.max(candle.high, trade.price);
+              candle.low = Math.min(candle.low, trade.price);
+              candle.close = trade.price;
+              candle.volume++;
+              candle.trades++;
+            }
+          }
+          
+          // Save 1m candles
+          const candles = Array.from(candleMap.values());
+          for (const candle of candles) {
+            await Candle.findOneAndUpdate(
+              {
+                symbol: candle.symbol,
+                interval: candle.interval,
+                startTime: candle.startTime
+              },
+              candle,
+              { upsert: true }
+            );
+          }
+          
+          console.log(`✅ Created ${candles.length} 1m candles from trades for ${symbol}`);
+        }
+      }
+      
+      // Now aggregate to higher timeframes
+      console.log(`📊 Aggregating ${symbol} to higher timeframes...`);
+      
+      await aggregator.aggregateFromBaseCandles(symbol, '1m', '5m');
+      await aggregator.aggregateFromBaseCandles(symbol, '1m', '15m');
+      await aggregator.aggregateFromBaseCandles(symbol, '1m', '30m');
+      await aggregator.aggregateFromBaseCandles(symbol, '1m', '1h');
+      await aggregator.aggregateFromBaseCandles(symbol, '1m', '4h');
+      await aggregator.aggregateFromBaseCandles(symbol, '1m', '1d');
+      
+      // Generate signals
+      await aggregator.generateSignalsForSymbol(symbol);
+      
+      return {
+        symbol,
+        success: true,
+        message: `Aggregation completed for ${symbol}`,
+        timestamp: new Date()
+      };
+      
+    } catch (error) {
+      console.error(`❌ Static aggregation error for ${symbol}:`, error);
+      throw error;
+    }
+  }
+
   // Tạo candle từ trades
   async createFromTrades(symbol, trades, interval = '1m') {
     if (!trades || trades.length === 0) return null;
@@ -211,9 +309,6 @@ class CandleAggregator {
   // Generate signals for a symbol
   async generateSignalsForSymbol(symbol) {
     try {
-      const TechnicalIndicators = require('./TechnicalIndicators');
-      const SignalEngine = require('./SignalEngine');
-      
       console.log(`🎯 Generating signals for ${symbol}...`);
       
       // Generate signals for multiple timeframes
@@ -221,14 +316,19 @@ class CandleAggregator {
       let totalSignals = 0;
       
       for (const timeframe of timeframes) {
-        const signals = await SignalEngine.generateSignals(symbol, timeframe);
-        totalSignals += signals.length;
-        
-        if (signals.length > 0) {
-          console.log(`🎯 [${symbol} ${timeframe}] Generated ${signals.length} signals:`);
-          signals.slice(0, 3).forEach(signal => {
-            console.log(`   ${signal.type === 'bullish' ? '📈' : '📉'} ${signal.signalType}: ${signal.strength}% - ${signal.description}`);
-          });
+        try {
+          const SignalEngine = require('./SignalEngine');
+          const signals = await SignalEngine.generateSignals(symbol, timeframe);
+          totalSignals += signals.length;
+          
+          if (signals.length > 0) {
+            console.log(`🎯 [${symbol} ${timeframe}] Generated ${signals.length} signals:`);
+            signals.slice(0, 3).forEach(signal => {
+              console.log(`   ${signal.type === 'bullish' ? '📈' : '📉'} ${signal.signalType}: ${signal.strength}% - ${signal.description}`);
+            });
+          }
+        } catch (signalErr) {
+          console.error(`❌ Error generating signals for ${symbol} ${timeframe}:`, signalErr.message);
         }
       }
       

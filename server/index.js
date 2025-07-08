@@ -13,6 +13,7 @@ const SignalEngine = require('./services/SignalEngine');
 dotenv.config();
 const app = express();
 app.use(cors());
+app.use(express.json()); // Thêm middleware để parse JSON
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
@@ -85,20 +86,39 @@ app.get("/api/intervals", async (req, res) => {
   }
 });
 
-// Endpoint để force aggregation
+// Sửa lại endpoint aggregate
 app.post("/api/aggregate", async (req, res) => {
   try {
+    console.log('🔄 Aggregation request received:', req.body);
+    
     const CandleAggregator = require("./services/CandleAggregator");
-    const aggregator = new CandleAggregator();
     
     const { symbols = ['ETH', 'BTC', 'SOL'] } = req.body;
     
-    // Run aggregation in background
-    aggregator.runAggregation(symbols);
+    console.log(`📊 Starting aggregation for symbols: ${symbols.join(', ')}`);
     
-    res.json({ message: "Aggregation started", symbols });
+    // Run aggregation for each symbol
+    for (const symbol of symbols) {
+      console.log(`🎯 Aggregating ${symbol}...`);
+      await CandleAggregator.aggregateCandles(symbol);
+    }
+    
+    console.log('✅ Aggregation completed successfully');
+    
+    res.json({ 
+      success: true,
+      message: `Aggregation completed for ${symbols.join(', ')}`, 
+      symbols,
+      timestamp: new Date().toISOString()
+    });
+    
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('❌ Aggregation error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      details: error.stack
+    });
   }
 });
 
@@ -471,6 +491,16 @@ app.get('/api/test/any-signals', async (req, res) => {
       message: 'Test failed'
     });
   }
+});
+
+// Thêm health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  });
 });
 
 app.listen(process.env.PORT, () => {

@@ -150,17 +150,63 @@ function App() {
     toast.loading("Aggregating data...", { id: "aggregation" })
 
     try {
-      await axios.post(`http://localhost:4000/api/aggregate`, { symbols: [symbol] })
-      toast.success(`Aggregation started for ${symbol}`, { id: "aggregation" })
-
-      setTimeout(() => {
-        fetchData()
-        fetchIndicators()
-        setLoading(false)
-      }, 10000)
+      // Kiểm tra server health trước
+      console.log('🏥 Checking server health...')
+      const healthResponse = await axios.get(`http://localhost:4000/api/health`)
+      console.log('✅ Server is healthy:', healthResponse.data)
+      
+      console.log(`🔄 Starting aggregation for ${symbol}...`)
+      
+      const response = await axios.post(`http://localhost:4000/api/aggregate`, { 
+        symbols: [symbol] 
+      }, {
+        timeout: 60000, // Tăng timeout lên 60s
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      console.log('✅ Aggregation response:', response.data)
+      
+      if (response.data.success) {
+        toast.success(response.data.message || `Aggregation completed for ${symbol}`, { id: "aggregation" })
+        
+        // Refresh data sau 3 giây
+        setTimeout(async () => {
+          try {
+            console.log('🔄 Refreshing data...')
+            await fetchData()
+            await fetchIndicators()
+            toast.success("Data refreshed successfully")
+          } catch (refreshError) {
+            console.error('❌ Refresh error:', refreshError)
+            toast.error("Failed to refresh data")
+          } finally {
+            setLoading(false)
+          }
+        }, 3000)
+      } else {
+        throw new Error(response.data.error || 'Aggregation failed')
+      }
+      
     } catch (err) {
       console.error("❌ Aggregation error:", err)
-      toast.error("Aggregation failed", { id: "aggregation" })
+      
+      let errorMessage = "Unknown error"
+      
+      if (err.code === 'ECONNREFUSED') {
+        errorMessage = "Cannot connect to server. Is it running on port 4000?"
+      } else if (err.response?.status === 404) {
+        errorMessage = "Aggregation endpoint not found"
+      } else if (err.response?.status === 500) {
+        errorMessage = err.response.data?.error || "Server error during aggregation"
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error
+      } else {
+        errorMessage = err.message
+      }
+      
+      toast.error(`Aggregation failed: ${errorMessage}`, { id: "aggregation" })
       setLoading(false)
     }
   }
@@ -260,6 +306,31 @@ function App() {
 
         <div className="flex items-center gap-2 ml-auto">
           {lastUpdate && <span className="text-xs text-[#848e9c]">{lastUpdate.toLocaleTimeString()}</span>}
+          
+          {/* Manual Refresh Button */}
+          <button
+            onClick={async () => {
+              setLoading(true)
+              toast.loading("Refreshing data...", { id: "refresh" })
+              try {
+                await fetchData()
+                await fetchIndicators()
+                toast.success("Data refreshed successfully", { id: "refresh" })
+              } catch (err) {
+                console.error("Refresh error:", err)
+                toast.error("Failed to refresh data", { id: "refresh" })
+              } finally {
+                setLoading(false)
+              }
+            }}
+            disabled={loading}
+            className="bg-[#02c076] hover:bg-[#02c076]/80 text-white px-3 py-1 rounded text-sm font-medium disabled:opacity-50 flex items-center gap-2 transition-all duration-200 hover:scale-105"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          
+          {/* Aggregate Button */}
           <button
             onClick={triggerAggregation}
             disabled={loading}
