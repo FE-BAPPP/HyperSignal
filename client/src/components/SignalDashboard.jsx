@@ -32,8 +32,8 @@ function SignalDashboard() {
           : `symbols=${filters.symbols}&intervals=${filters.intervals}`
 
       const [allRes, topRes] = await Promise.all([
-        axios.get(`http://localhost:4000/api/signals/${endpoint}?${params}`),
-        axios.get(`http://localhost:4000/api/signals/top?limit=10`),
+        axios.get(`https://hypersignal.onrender.com/api/signals/${endpoint}?${params}`),
+        axios.get(`https://hypersignal.onrender.com/api/signals/top?limit=10`),
       ])
 
       const allSignalsData = {

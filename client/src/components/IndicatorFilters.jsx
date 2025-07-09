@@ -100,7 +100,7 @@ function IndicatorFilters({ symbol, interval, onIndicatorSelect }) {
 
     setLoading(true)
     try {
-      const res = await axios.get(`http://localhost:4000/api/indicators/${symbol}?interval=${interval}`)
+      const res = await axios.get(`https://hypersignal.onrender.com/api/indicators/${symbol}?interval=${interval}`)
       setIndicators(res.data)
       onIndicatorSelect?.(res.data, selectedIndicators)
     } catch (err) {

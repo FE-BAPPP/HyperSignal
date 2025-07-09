@@ -94,10 +94,10 @@ function App() {
 
     try {
       const [candlesRes, tradesRes, fundingRes, oiRes] = await Promise.all([
-        axios.get(`http://localhost:4000/api/candles?symbol=${symbol}&interval=${timeframe}&limit=100`),
-        axios.get(`http://localhost:4000/api/trades?symbol=${symbol}&limit=50`),
-        axios.get(`http://localhost:4000/api/funding?symbol=${symbol}&limit=50`),
-        axios.get(`http://localhost:4000/api/oi?symbol=${symbol}&limit=50`),
+        axios.get(`https://hypersignal.onrender.com/api/candles?symbol=${symbol}&interval=${timeframe}&limit=100`),
+        axios.get(`https://hypersignal.onrender.com/api/trades?symbol=${symbol}&limit=50`),
+        axios.get(`https://hypersignal.onrender.com/api/funding?symbol=${symbol}&limit=50`),
+        axios.get(`https://hypersignal.onrender.com/api/oi?symbol=${symbol}&limit=50`),
       ])
 
       setCandles(candlesRes.data)
@@ -137,7 +137,7 @@ function App() {
 
   const fetchIndicators = async () => {
     try {
-      const res = await axios.get(`http://localhost:4000/api/indicators/${symbol}?interval=${timeframe}`)
+      const res = await axios.get(`https://hypersignal.onrender.com/api/indicators/${symbol}?interval=${timeframe}`)
       setIndicatorData(res.data)
     } catch (err) {
       console.error("❌ Error fetching indicators:", err)
@@ -152,12 +152,12 @@ function App() {
     try {
       // Kiểm tra server health trước
       console.log('🏥 Checking server health...')
-      const healthResponse = await axios.get(`http://localhost:4000/api/health`)
+      const healthResponse = await axios.get(`https://hypersignal.onrender.com/api/health`)
       console.log('✅ Server is healthy:', healthResponse.data)
       
       console.log(`🔄 Starting aggregation for ${symbol}...`)
       
-      const response = await axios.post(`http://localhost:4000/api/aggregate`, { 
+      const response = await axios.post(`https://hypersignal.onrender.com/api/aggregate`, { 
         symbols: [symbol] 
       }, {
         timeout: 60000, // Tăng timeout lên 60s
