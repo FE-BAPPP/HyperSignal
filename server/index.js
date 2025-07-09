@@ -503,6 +503,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get("/", (req, res) => {
+  res.send("HyperSignal backend is running!");
+});
+
+
 app.listen(process.env.PORT, () => {
   console.log(`🚀 Server is running on port ${process.env.PORT}`);
+  
 });
